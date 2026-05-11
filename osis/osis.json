@@ -5,7 +5,7 @@
   "activeVersion": "v1",
   "anonId": "1b245f9e-5221-476f-aaaf-004912458101",
   "createdAt": "2026-05-11T08:22:22Z",
-  "lastTwinUpdate": null,
+  "lastTwinUpdate": "2026-05-11",
   "files": {
     "twin": "osis/twin.md",
     "inbox": ["osis/inbox/2026-05-11--socraticrag-benchmark-paper.md"],

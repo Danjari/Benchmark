@@ -7,39 +7,46 @@ Not a source of truth for product decisions.
 
 ## What This Is
 
-SocraticRAG is a proposed NLP benchmark (targeting EMNLP submission) that evaluates whether LLMs can generate Socratic tutoring responses that simultaneously satisfy two constraints no existing benchmark measures jointly: (1) pedagogical form — the response must guide without giving the answer away, and (2) retrieval faithfulness — the response must stay bounded by a specific retrieved educational document. The benchmark defines a new evaluation concept called **Pedagogical Faithfulness**.
+SocraticRAG is a proposed NLP benchmark (targeting EMNLP 2026 submission) that evaluates whether LLMs can generate Socratic tutoring responses that simultaneously satisfy two constraints no existing benchmark measures jointly: (1) pedagogical form — the response must guide without giving the answer away, and (2) retrieval faithfulness — the response must stay bounded by a specific retrieved educational document. The benchmark defines a new evaluation concept called **Pedagogical Faithfulness**. The project is currently at the plan stage: all methodology decisions are locked and all open decisions resolved; no implementation exists yet. Two professors are confirmed as collaborators/co-authors.
 
 ## Core Problem Being Solved
 
 Existing benchmarks evaluate RAG faithfulness (RAGAS) and Socratic dialogue quality (EULER, SocraticLM, MathTutorBench, Discerning Minds) in isolation. When combined in a real educational RAG system, LLMs exhibit a joint failure mode neither benchmark family can detect: they either reveal the answer, drift outside the retrieved context, or miss the student's specific misconception. SocraticRAG is the first benchmark to stress-test all three simultaneously.
+
+Additional supporting evidence for the gap: MathTutorBench evaluates its own Socratic Questioning task using BLEU-4 while simultaneously arguing that BLEU is "noisy and unreliable" for open-ended pedagogical evaluation. This internal contradiction demonstrates the field's lack of purpose-built evaluation metrics for this task and strengthens the motivation for SocraticRAG's three-axis design. Lefton et al. (2025), a Socratic RAG system for academic KOS disambiguation (library taxonomy information retrieval — not educational tutoring), also includes zero faithfulness evaluation, confirming the absence is systemic rather than domain-specific.
 
 ## System Architecture (Four Phases)
 
 ### Phase 1 — Task Definition & Dataset Construction (Edu-QA-Socratic)
 
 **Input format:** (C, P, U) → R
-- C = pedagogical context chunk from university course materials (Andrew Ng's materials cited as corpus source)
+- C = pedagogical context chunk from university course materials (MIT OpenCourseWare CC BY-NC-SA 4.0 and LibreTexts; extracted via our own OCR and semantic chunking pipeline)
 - P = student profile encoding one of four cognitive states: accurate, erroneous, comprehension, confusion (taxonomy from Discerning Minds / Liu et al. 2025)
 - U = student utterance expressing that state
 - R = model-generated Socratic guiding question
 
-**Data pipeline (Silver-to-Gold):**
-1. Corpus collection — OCR + semantic chunking of lecture slide PDFs, syllabi, reading excerpts (SynapsEd pipeline referenced)
-2. Student profile construction — 4 cognitive states per chunk, contrastive pairs (erroneous vs. accurate under identical context)
-3. Seed generation — Dean-Teacher-Student multi-agent pipeline (from SocraticLM) generates candidate misconceptions and utterances; Dean agent filters implausible ones
-4. Expert annotation — Human educators draft the Golden Socratic Response (R₀ₙₑˣ) with explicit supporting-sentence highlights in C
+**Formal constraint:** R ⊬ sol (R does not entail the solution)
+
+**Data pipeline (Silver-to-Gold — Option C hybrid):**
+1. Corpus collection — OCR + semantic chunking of lecture slide PDFs from MIT OpenCourseWare (CC BY-NC-SA 4.0) and LibreTexts; our own pipeline (not SynapsEd, not Andrew Ng materials)
+2. Student profile construction — 4 cognitive states per chunk, contrastive pairs (erroneous vs. accurate under identical context), following Discerning Minds taxonomy
+3. Seed generation — Dean-Teacher-Student multi-agent pipeline (from SocraticLM) generates candidate misconceptions and utterances; Dean agent filters implausible ones using three domain-agnostic criteria plus a fourth RAG-specific criterion: the question draws only on concepts present in chunk C (making the Dean the retrieval-faithfulness gatekeeper)
+4. Expert annotation — LLM generates candidates; expert educators review each scenario and select or lightly revise the best candidate as the Golden Socratic Response (R₀ₙₑˣ), with explicit supporting-sentence highlights in C (silver-to-gold; validated practice from MathTutorBench)
+
+**Target dataset scale:** 50–100 document chunks across 5–10 courses and 3–4 subject domains; 4 cognitive states per chunk = 200–400 annotated scenarios; 1–2 utterances per scenario = 400–800 total benchmark items.
 
 ### Phase 2 — Evaluation Metrics (Three Orthogonal Axes)
 
 **Metric 1: Direct-Answer Leakage (Socratic Adherence)**
 - Binary: did the model give the answer directly?
-- Measurement: adapted from EULER's GPT-4o judge rubric ("reveal_answer" criterion), validated at Pearson p=0.78 against human judgment
-- Equivalent to MathTutorBench's "Leaked Solution (%)"
+- Measurement: adapted from EULER's GPT-4o judge rubric ("reveal_answer" criterion), validated at Pearson r = 0.78 (reported as p = 0.78 in the original paper — non-standard notation, not a p-value) against human judgment
+- Analogous concept in MathTutorBench: a revealing-answer criterion within the Scaffolding Score reward model (not a named metric called "Leaked Solution (%)")
 
 **Metric 2: Retrieval Faithfulness**
 - Did the model introduce concepts absent from C?
-- Measurement: NLI-based decomposition of implicit premises in the Socratic question; each assumption checked for entailment against C; penalty called "Unverifiable Specificity" for unsupported concepts
+- Measurement (two-step NLI process): (1) LLM extracts the declarative presuppositions embedded in the Socratic question; (2) NLI/entailment check verifies each presupposition against C; penalty called "Unverifiable Specificity" for unsupported concepts
 - Novel contribution: first adaptation of NLI faithfulness checking to non-declarative pedagogical outputs (RAGAS breaks here structurally)
+- Methodological ancestor: FActScore (Min et al., 2023) — same atomic decomposition + entailment mechanism adapted from declarative to interrogative outputs
 
 **Metric 3: Pedagogical Alignment (Student State Targeting)**
 - Did the question address the student's specific misconception, or a generically valid but irrelevant question?
@@ -47,23 +54,25 @@ Existing benchmarks evaluate RAG faithfulness (RAGAS) and Socratic dialogue qual
 
 **Orthogonality:** A model can fail any single axis while passing the other two — each failure points to a different architectural or training deficiency.
 
+**Self-enhancement bias mitigation:** Cross-judge protocol. Claude judges GPT-4o outputs; GPT-4o judges Claude outputs. MT-Bench (Zheng et al., 2024) cited for bias identification.
+
 ### Phase 3 — Experimental Setup
 
 **Models evaluated:**
 - General LLMs: GPT-4o, Claude 4.6 Sonnet, Llama-3.1 (8B and 70B)
-- Specialized tutoring: LearnLM, EULER
+- Specialized tutoring: LearnLM (available as `learnlm-1.5-pro-experimental` via Google AI API), Qwen2.5-7B-SocraticLM (CogBase-USTC/SocraticLM on HuggingFace — publicly available fine-tuned weights)
 - Math-specialized: baseline to test whether domain expertise compensates for pedagogical deficits
 
 **Prompting paradigms:**
 - Zero-shot: standard Socratic tutor system prompt (following EULER's inference prompt)
 - Few-shot (ICL): 3–5 gold examples showing C, U, R₀ₙₑˣ with highlighted supporting sentences
-- Chain-of-Thought: explicit rationale step (Identify misconception → Locate supporting sentences in C → Draft question), motivated by Hu et al. 2025 (31.2% hallucination reduction in multimodal reasoning)
+- Chain-of-Thought: explicit rationale step (Identify misconception → Locate supporting sentences in C → Draft question), motivated by Wei et al. (2022) "Chain-of-Thought Prompting Elicits Reasoning in Large Language Models" (NeurIPS 2022) — the canonical CoT paper
 
 **Core empirical claim:** performance degrades severely when both constraints are applied jointly — the joint constraint creates a failure mode invisible to either benchmark family in isolation.
 
 ### Phase 4 — Human Validation (Meta-Evaluation)
 
-- 500 sampled interactions rated by 3 expert educators (blind)
+- 500 sampled interactions rated by 2 expert educators (professors confirmed as collaborators) with adjudication protocol for disagreements
 - Dimensions: Faithfulness (is the question derived from C?) and Socratic Adherence (does it guide without revealing?)
 - Likert scale 1–5; Cohen's Kappa for inter-rater reliability
 - Target: Spearman ρ > 0.7 between human scores and automated pipeline
@@ -73,19 +82,41 @@ Existing benchmarks evaluate RAG faithfulness (RAGAS) and Socratic dialogue qual
 
 | Work | Role in SocraticRAG |
 |---|---|
-| RAGAS (Es et al. 2024) | Baseline RAG faithfulness framework — shown to be structurally incompatible with Socratic outputs |
-| EULER (Bonino et al. 2024) | Provides validated LLM judge rubric (reveal_answer, p=0.78); model baseline |
-| SocraticLM (Liu et al. 2024) | Dean-Teacher-Student pipeline; 35K dialogue dataset; demonstrates GPT-4 Socratic failure |
-| MathTutorBench (Macina et al. 2025) | Closest existing benchmark; explicitly retrieval-free and math-only; gap SocraticRAG fills |
-| Discerning Minds (Liu et al. 2025) | Four-state cognitive taxonomy; GuideEval rubric; three-phase framework; no retrieval constraints |
-| Ilkou et al. 2024 | Explicit call for hybrid RAG+Socratic benchmarks |
-| Lefton et al. 2025 | Socratic RAG system with zero faithfulness evaluation — demonstrates the exact gap |
-| Hu et al. 2025 | CoT Socratic reasoning reduces hallucinations 31.2% in multimodal settings |
+| RAGAS (Es et al. 2024) | Baseline RAG faithfulness framework — shown to be structurally incompatible with Socratic outputs (declarative-only mechanism) |
+| EULER (Bonino et al. 2024) | Provides validated LLM judge rubric (reveal_answer, Pearson r = 0.78); supporting evidence for topic drift; workshop paper |
+| SocraticLM (Liu et al. 2024, NeurIPS) | Dean-Teacher-Student pipeline; 35K dialogue dataset; demonstrates GPT-4 Socratic failure; silver-to-gold precedent |
+| MathTutorBench (Macina et al. 2025, EMNLP Oral) | Closest existing benchmark; 9,125 items / 7 tasks; math-only and entirely retrieval-free; BLEU-4 contradiction motivates SocraticRAG's metric design |
+| Discerning Minds (Liu et al. 2025) | Four-state cognitive taxonomy; GuideEval rubric; three-phase framework; 180 scenarios; no retrieval constraints; v2 Sept 29, 2025 |
+| Ilkou et al. 2024 | Position paper calling for hybrid RAG+Socratic benchmarks; supporting voice (not primary empirical evidence) |
+| Lefton et al. 2025 | Socratic RAG system for academic KOS disambiguation (library taxonomy IR — not educational tutoring); zero faithfulness evaluation — confirms gap is systemic |
+| Wei et al. 2022 (NeurIPS) | Canonical CoT paper — motivates CoT prompting paradigm in Phase 3 |
+| FActScore (Min et al. 2023, EMNLP) | Methodological ancestor of Metric 2 (atomic decomposition + entailment) |
+| MT-Bench (Zheng et al. 2024) | Self-enhancement bias documentation — motivates cross-judge protocol |
+| MIT OpenCourseWare + LibreTexts | Corpus source (CC BY-NC-SA 4.0 and CC-licensed respectively) |
 
 ## Current State
 
-This is a research proposal at the literature review + methodology design stage. No implementation exists yet. The corpus (SynapsEd / Andrew Ng course materials), the annotation pipeline, and the automated evaluation framework are all described but not yet built. The document is framed as an EMNLP submission proposal for internal review.
+All 16 open decisions from decisions.md v1.0 are resolved (v1.1, closed 2026-05-11). All primary papers fully verified via complete PDF read (RAGAS, EULER, SocraticLM, MathTutorBench, Discerning Minds, Ilkou, Lefton). Target venue is EMNLP 2026. Two professors confirmed as collaborators/co-authors. No implementation exists. The corpus, annotation pipeline, and automated evaluation framework are described and methodology-locked but not yet built. The primary artifact is `benchmark paper.md`.
+
+**Methodology locked as of 2026-05-11:**
+- Corpus: MIT OCW + LibreTexts (CC-licensed), our own OCR + chunking pipeline
+- Silver-to-gold: Option C hybrid (LLM generates, educators select/revise)
+- Specialized tutoring models: Qwen2.5-7B-SocraticLM + LearnLM (learnlm-1.5-pro-experimental)
+- CoT motivation: Wei et al. 2022
+- Formal notation: R ⊬ sol
+- Pearson citation: r = 0.78 (non-standard notation flagged)
+- MathTutorBench metric: "revealing-answer criterion within Scaffolding Score" (not "Leaked Solution %")
+- Lefton: KOS disambiguation (IR), not educational tutoring
+- Metric 2: two-step NLI (LLM presupposition extraction + entailment check)
+- Dean fourth criterion: draws only on concepts in C (retrieval-faithfulness gatekeeper)
+- Self-enhancement bias: cross-judge protocol
 
 ## Topology
 
 Standalone research project. No software packages, no monorepo structure, no build system. One primary artifact: `benchmark paper.md`.
+
+---
+
+## Sessions
+
+- 2026-05-11 — Updated twin to reflect corpus change (MIT OCW + LibreTexts), silver-to-gold pipeline, model list corrections (Qwen2.5-7B-SocraticLM, LearnLM confirmed), CoT citation fix (Wei et al. 2022), notation corrections, Lefton reframing, new BLEU gap argument, all decisions resolved · `claude -r 127ec0b2-7994-4530-bcae-3fbf88969adc`
