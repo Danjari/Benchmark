@@ -1,0 +1,55 @@
+\documentclass{stylefiles/capstone}
+
+\begin{document}
+
+\title{The Name of the Title is Hope}
+
+%year
+\capstoneyear{2020}
+\capstonedocument{Abstract}
+% options are Fall, Spring
+\capstonesemester{Spring}
+
+% For each author, provide the names and emails of the students as follows:
+\author{Student Awesome}
+\affiliation{%
+  \institution{Computer Science, NYUAD}
+}
+\email{awesome@nyu.edu}
+
+%\author{Student Eager}
+%\affiliation{%
+%  \institution{Computer Science, NYUAD}
+%}
+%\email{eager@nyu.edu}
+
+%\author{Student Writer}
+%\affiliation{%
+%  \institution{Computer Science, NYUAD}
+%}
+%\email{writer@nyu.edu}
+
+% Add your primary advisor's name, then comma-separate all secondary advisors' names.
+% Please list advisors only and not secondary graders.
+\advisors{Primary Advisor, Secondary Advisor}
+
+\renewcommand{\shortauthors}{Awesome}
+
+\renewcommand{\abstractname}{Extended Abstract}
+\begin{abstract}
+ The extended abstract includes a title, a summarized area background and a high level research question, as well as a reference list of 4 to 8 relevant papers cited as such ~\cite{chipapers}. The extended abstract is no more than 500 words.
+\end{abstract}
+
+
+%Add a list of comma-separated keywords that are relevant to your report. They should be more specific than the list below
+\keywords{database systems, human-computer interaction, NLP, cyber-security, computational geometry}
+
+
+
+\maketitle
+
+\bibliographystyle{stylefiles/ACM-Reference-Format}
+\bibliography{refs}
+
+\end{document}
+\endinput

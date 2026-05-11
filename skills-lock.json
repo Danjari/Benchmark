@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "osis": {
+      "source": "andresCamp/osis-skill",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "f59386e89f33dcbb4a6037405f3b0fd0712538c50f89d68b0006f2f359365677"
+    }
+  }
+}

@@ -1,0 +1,242 @@
+\documentclass{stylefiles/capstone}
+
+\begin{document}
+
+\title{Designing an Adaptive AI System for Personalized Learning Pathways Using Instructor-Guided Content}
+
+%year
+\capstoneyear{2025}
+% options are Seminar, Project 1, Project 2
+\capstonedocument{Seminar}
+% options are Fall, Spring
+\capstonesemester{Spring}
+
+% Author info
+\author{Moudjahid Nouroudini Moussa}
+\affiliation{%
+  \institution{Computer Science, NYUAD}
+}
+\email{mm12515@nyu.edu}
+
+% Advisors
+\advisors{Hanan Salam, Nancy Gleason}
+
+\renewcommand{\shortauthors}{Moudjahid}
+
+\begin{abstract}
+Most AI-powered learning platforms offer static sequences of instructions that ignore learner diversity. This capstone project focuses on building and evaluating the core AI engine of \textit{SynapsEd}, a platform that generates and adapts personalized learning pathways using instructor-curated content. The system combines retrieval-augmented generation (RAG) and deep knowledge tracing (DKT) to align student goals, prior knowledge, and learning preferences with semantically matched resources. Unlike conventional tutoring systems, this engine remains grounded in materials approved by instructors while dynamically updating content recommendations based on learner performance. The project draws from both AI and educational psychology to explore how artificial intelligence can support tailored, transparent, and pedagogically sound learning experiences. In doing so, it addresses key challenges in AI-based personalization, including model explainability, relevance scoring, and cognitive-level alignment as defined by Bloom's taxonomy. Ultimately, this work aims to bridge the gap between automated personalization and human-centered pedagogy in higher education settings.
+\end{abstract}
+
+\keywords{personalized learning, AI in education, retrieval-augmented generation, knowledge tracing, human-AI interaction, learning pathways}
+
+\maketitle
+
+\section{Introduction}
+
+The explosion of generative AI has introduced exciting possibilities in education, particularly around adaptive and personalized learning. Yet most existing platforms apply one-size-fits-all models or linear sequences that overlook the complexity of learner variation. Cognitive science literature has long emphasized that learners bring differing levels of prior knowledge, which significantly affects how they absorb new information \cite{ausubel1968educational}. This mismatch between what learners know and what content they receive often results in disengagement or cognitive overload.
+
+This capstone explores how artificial intelligence can bridge that gap through the design of an adaptive system that creates personalized learning pathways grounded in instructor-curated resources. Specifically, it focuses on the AI core of \textit{SynapsEd}, an educational platform where student survey responses (learning goals, background, preferences) and professor-uploaded materials (videos, lecture notes, PDFs) are embedded into a shared vector space. A retrieval-augmented generation (RAG) model then uses semantic search to match relevant content and create a sequenced learning plan. Inspired by recent progress in knowledge tracing \cite{liu2025deepkt}, the model adjusts in real-time based on how the student performs, whether they excel, struggle, or request help.
+
+The system is designed not just for performance, but for transparency and collaboration. Students and professors remain in the loop: learners can understand why a pathway was suggested, and instructors can approve or revise generated plans. As shown in recent literature, transparency and explainability are vital for building trust in educational AI tools \cite{chaudhry2022transparency}. Further, emerging research has indicated that large language models like GPT-4 tend to under-perform at basic cognitive tasks when not grounded in expert-reviewed content, sometimes hallucinating responses even on exam-style questions \cite{herrmann2024gpt}. SynapsEd tackles this by making sure every AI response is traced to a professor-uploaded content.
+
+This project will simulate several learner profiles and iteratively test how the AI performs across dimensions such as coherence of pathway, alignment with Bloom’s taxonomy, and responsiveness to performance changes. 3 to 4 Professors will be consulted to evaluate the output’s pedagogical validity.
+
+\section{Related Work}
+
+This project builds on a growing body of work at the intersection of AI, educational psychology, and HCI.
+
+Lewis et al. \cite{lewis2021rag} introduced retrieval-augmented generation (RAG), which combines dense vector search with generative models to ground responses in relevant documents. Their framework, which facilitates semantic search over indexed documents, forms a foundational element of this project's approach to content retrieval. Related work, such as ColPali \cite{faysse2025colpaliefficientdocumentretrieval}, demonstrates the potential for extending RAG capabilities to process and retrieve information from multimodal documents, including visual elements, suggesting avenues for incorporating diverse instructor-provided content. The core mechanism of RAG, involving the semantic matching of queries (representing student needs) with relevant documents (instructor content), is central to the proposed system.
+
+Similarly, Liu et al. \cite{liu2025deepkt} offer a comprehensive review of deep knowledge tracing (DKT) models, emphasizing the need to align content sequencing with predicted student performance over time, a technique used here to adapt learning pathways dynamically.
+
+Herrmann-Werner et al. \cite{herrmann2024gpt} evaluated GPT-4’s performance on real-world medical exam questions using Bloom’s taxonomy. Their findings caution against over-reliance on LLMs for foundational-level questions (“remember,” “understand”), especially when they do not take inspiration from expert-approved material,  a pitfall this project addresses by embedding only instructor-provided content.
+
+From the ethical and usability perspective, Chaudhry et al. \cite{chaudhry2022transparency} developed a transparency index framework for AI in education, underscoring the importance of explainability for students, instructors, and system designers alike. This work informs the human-AI interaction layer of SynapsEd, where both students and professors are kept in the decision loop.
+
+Lastly, Ausubel’s foundational work \cite{ausubel1968educational} on the importance of prior knowledge continues to shape modern learner modeling systems, reinforcing this project’s commitment to personalized, meaningful instruction rooted in what the student already knows.
+In addition to scholarly research, this project exists in dialogue with a range of existing platforms and tools that claim to offer personalized or adaptive learning experiences. Table~\ref{tab:competitors} provides a high-level comparison between SynapsEd and both commercial systems and academic initiatives.
+\subsection*{Comparison with Related Platforms}
+
+In addition to academic literature, SynapsEd can be compared with a number of AI-driven and adaptive learning tools. Below is a summary of key platforms and how SynapsEd distinguishes itself:
+
+\begin{itemize}
+  \item \textbf{YouLearn AI}: Offers adaptive quizzes and chat support. Unlike SynapsEd, it lacks instructor oversight and pedagogical transparency.
+  
+  \item \textbf{The Learning Hub (You-Learn)}: Focuses on VR journeys and GDPR compliance. SynapsEd instead emphasizes scalable, curriculum-linked AI personalization.
+  
+  \item \textbf{Khan Academy / Duolingo}: Popular for gamification and learner dashboards. SynapsEd differs by grounding pathways in instructor-uploaded content.
+  
+  \item \textbf{Harnessing AI for PL}~\cite{castro2024harnessing}: Uses machine learning for path prediction. SynapsEd builds on this by integrating explainability and feedback loops.
+  
+  \item \textbf{Personalized Learning Through AI}~\cite{vorobyeva2025personalized}: An academic review highlighting transparency gaps, which SynapsEd addresses through Bloom-aligned pathways and human-in-the-loop design.
+  
+  \item \textbf{Socratic / ChatGPT Tutors}: Useful for on-demand answers, but SynapsEd offers structured, goal-aligned sequences based on real course materials.
+  
+  \item \textbf{NotebookLM (Google)}: Provides AI-driven summaries from user-uploaded documents. SynapsEd goes further by combining this with student profiling, adaptive sequencing, and instructor-reviewed pedagogy.
+\end{itemize}
+
+
+\section{Research Methodology}
+
+This capstone project uses a research methodology that focuses on the iterative design, development, and evaluation of the SynapsEd core AI engine, followed by a user study to assess its potential in a realistic educational context. The methodology is structured in the following phases:
+
+\subsection{Phase 1: System Design and Development (Iterative Process)}
+
+This phase focuses on the conceptualization, design, and implementation of the SynapsEd core AI engine. This will be an iterative process, with each sub-step informing the subsequent ones.
+
+\textbf{Step 1.1: Requirements Elicitation and System Architecture Definition:}  
+Conduct a thorough analysis of the requirements for a personalized learning system that integrates instructor-guided content. This will involve defining the functionalities of the RAG and DKT components and their interaction. Develop a detailed system architecture outlining the data flow, module interactions, and key algorithms to be employed. This includes specifying the embedding models, semantic search techniques, and the DKT model architecture. Specify the use of multiple Large Language Models (LLMs) for potential content generation within the RAG framework (e.g., GPT-4.5, Claude 3.7 Sonnet, Gemini 2.5 Pro). The architecture will allow for modular integration and comparison of these models.
+
+\textbf{Step 1.2: Instructor Content Corpus Curation and Preparation:}  
+Define the criteria for the instructor-curated content to be used in the system. Prepare a sample corpus of diverse learning materials (e.g., lecture notes, readings, assignments, slide presentations). Develop a process for ingesting and indexing this content, including the integration of ColPali\cite{faysse2025colpaliefficientdocumentretrieval} or similar Vision Language Models (VLMs) to process and embed visual information from slide presentations for enhanced retrieval fidelity.
+
+\textbf{Step 1.3: Development of the Retrieval-Augmented Generation (RAG) Component:}  
+Implement the RAG model responsible for retrieving relevant learning resources based on student profiles and learning context. This includes embedding models to create vector representations of student profiles and instructor content (textual and visual), developing the semantic search functionality, and designing the initial content sequencing logic based on semantic similarity.
+
+\textbf{Step 1.4: Development of the Deep Knowledge Tracing (DKT) Component:}  
+Implement the DKT model to track student knowledge mastery over time. This includes selecting and implementing a suitable DKT model architecture, defining how student interactions and performance data will be used to update the knowledge state, and establishing mechanisms for the DKT model to provide insights into student learning progress.
+
+\textbf{Step 1.5: Integration of RAG and DKT for Personalized Pathway Generation:}  
+Develop the core logic that integrates the outputs of the RAG (relevant content) and DKT (knowledge state) to generate personalized learning pathways. This will involve defining rules or algorithms for sequencing content, incorporating pedagogical strategies (e.g., scaffolding), and considering cognitive alignment based on Bloom's Taxonomy.
+
+\textbf{Step 1.6: Development of Instructor and Student Interface Elements (Prototypes):}  
+Design and develop basic interface elements (even if simulated or low-fidelity prototypes) to allow instructors to upload content, review AI-generated learning pathways, and provide feedback. Similarly, design elements for students to interact with the generated pathways, receive explanations, and respond to brief in-platform surveys.
+
+\textbf{Step 1.7: Implementation of Transparency Mechanisms:}  
+Integrate features that provide explanations to both students and instructors regarding the rationale behind the generated pathways and content recommendations.
+
+\textbf{Step 1.8: Iterative Testing and Refinement:}  
+Conduct ongoing testing of individual components and the integrated system using simulated data and scenarios. Identify and address bugs, refine algorithms, and improve the overall functionality based on testing outcomes.
+
+\subsection{Phase 2: User Study Evaluation}
+
+This phase focuses on evaluating the SynapsEd core AI engine in a simulated or controlled educational context, acting as a user study.
+
+\textbf{Step 2.1: Creation of Simulated Learner Profiles and Scenarios:}  
+Develop a diverse set of simulated learner profiles representing different backgrounds, goals, and learning preferences. Create specific learning scenarios with defined learning objectives and instructor-curated content.
+
+\textbf{Step 2.2: Generation of Personalized Learning Pathways for Simulated Learners:}  
+Utilize the developed SynapsEd engine to generate personalized learning pathways for each simulated learner profile within the defined scenarios.
+
+\textbf{Step 2.3: Expert (Instructor) Evaluation of Pedagogical Soundness and Accuracy:}  
+Recruit 3-4 professors with expertise in relevant subject areas and/or educational technology to review the generated pathways and provide feedback.
+
+\textbf{Step 2.4: Simulated User (Student) Evaluation of Transparency, Relevance, and Engagement:}  
+Recruit 20-30 students or simulate their feedback on the clarity and relevance of the pathways, using questionnaires or structured interviews.
+
+\textbf{Step 2.5: Data Analysis and Synthesis:}  
+Analyze qualitative and quantitative data from instructor and student feedback, evaluating the system’s pedagogical soundness, transparency, and user engagement.
+
+\textbf{Step 2.6: Documentation and Reporting:}  
+Document the research process, data collection, and analysis. Present the results in the capstone report, highlighting the strengths, limitations, and future directions of SynapsEd.
+
+\section{Evaluation}
+
+The evaluation of the SynapsEd core AI engine will employ a mixed-methods approach, assessing its technical performance, pedagogical soundness, transparency, and user engagement. This will involve quantitative analysis of system behavior with simulated data and qualitative feedback from expert stakeholders (instructors) and potential end-users (students).
+
+\subsection{4.1 Quantitative Evaluation (Simulated Profiles)}
+
+\textbf{Pathway Coherence:}  
+Metrics will be defined to assess the logical flow and progression of content within the generated pathways. This may involve analyzing prerequisite relationships between content items (if metadata is available) or calculating the semantic similarity between consecutive items in a pathway.
+
+\textbf{Alignment with Bloom's Taxonomy:}  
+The system's ability to recommend content aligned with the intended cognitive level for a student (based on their profile, the DKT's estimated knowledge state, and Course Learning Outcomes) will be evaluated. This requires a defined method for determining the cognitive level of both the instructor-provided content and the student's learning goals.
+
+\textbf{Responsiveness to Performance Changes:}  
+The system's dynamic adaptation of pathways based on simulated student performance will be tested. Scenarios simulating learning difficulties (requiring prerequisite content) and rapid mastery (allowing for advanced content) will be used to observe the DKT's influence on subsequent recommendations.
+
+\textbf{Relevance Scoring (RAG Evaluation):}  
+The accuracy of the RAG component in retrieving relevant instructor-provided content (including textual and visual materials processed by ColPali) for specific simulated student queries and learning contexts will be assessed. This may involve expert human evaluation of the relevance of retrieved documents and slide content for given scenarios.
+
+\textbf{LLM Performance (If Content Generation is Implemented):}  
+If the system incorporates the generation of supplementary content using different LLMs (e.g., GPT-4.5, Claude 3.7 Sonnet, Gemini 2.5 Pro), quantitative metrics such as fluency, coherence, and factual accuracy (as judged by expert review against instructor-provided materials) will be employed to compare their performance.
+
+\subsection{4.2 Qualitative Evaluation (Instructor Consultation)}
+
+\textbf{Pedagogical Validity and Content Accuracy:}  
+Semi-structured interviews or a structured evaluation protocol will be used with 3-4 professors to gather in-depth feedback on the generated pathways. Instructors will review pathways for simulated (or anonymized real) student profiles and provide their expert opinions on:
+
+\begin{itemize}
+  \item The appropriateness of content selection (including both textual and visual resources).
+  \item The logical sequencing and flow of content.
+  \item The identification of potential knowledge gaps or areas of confusion.
+  \item The alignment of content with Course Learning Outcomes and cognitive levels.
+  \item The overall utility and potential for integration into their teaching practice.
+  \item The accuracy and appropriateness of the content, rated on a 1--20 scale, accompanied by short-form justifications and specific examples.
+  \item The perceived effectiveness of the transparency information provided to instructors.
+\end{itemize}
+
+\subsection{4.3 Qualitative Evaluation (Student Feedback)}
+
+\textbf{Transparency and Understandability:}  
+A student user study (or simulated student feedback analysis) will focus on the clarity and usefulness of the explanations provided for the personalized pathways. Feedback will be gathered on whether students understand why specific content was recommended and if this enhances their learning experience. Questions will address the level of detail and potential for cognitive overload.
+
+\textbf{Perceived Relevance and Usefulness:}  
+Student perspectives will be gathered on the relevance of the recommended content to their learning goals and prior knowledge, and the perceived helpfulness of the personalized pathways for their learning.
+
+\textbf{User Engagement:}  
+Feedback on user engagement with the platform will be collected through:
+\begin{itemize}
+  \item Qualitative questions in interviews or questionnaires regarding their interest and interaction with the learning materials.
+  \item Analysis of responses from the brief, in-platform surveys integrated at strategic points within the simulated learning experience.
+\end{itemize}
+
+\textbf{Comparison of LLM and RAG Approaches:}  
+If applicable, student feedback will be specifically solicited on their experience with pathways that utilized content generated by different LLMs or retrieved using different RAG techniques (e.g., standard embeddings vs. ColPali for visual content), focusing on perceived quality, fidelity to instructor material, and overall learning experience.
+
+The analysis of both quantitative and qualitative data will provide a comprehensive evaluation of the SynapsEd core AI engine, addressing its technical capabilities, pedagogical alignment, transparency mechanisms, and user engagement. The insights gained will inform the discussion of the system's strengths, limitations, and potential for future development.
+
+\section{Project Timeline (Over Two Semesters)}
+
+\subsection*{Semester 1: Research, Design, and Development (Weeks 1--14)}
+\begin{itemize}
+  \item Weeks 1--3: Literature Review and Scope Refinement.
+  \item Weeks 4--6: System Design and Architecture Planning.
+  \item Weeks 7--10: Core Component Development (RAG \& DKT Implementation).
+  \item Weeks 11--13: Integration of All System Components and Initial Testing with Simulated Profiles.
+  \item Week 14: Final System Refinement and Preparation for Instructor Use.
+\end{itemize}
+
+\subsection*{Semester 2: Evaluation and Reporting (Weeks 1--14)}
+\begin{itemize}
+  \item Weeks 1--4: Expert (Instructor) Onboarding and Initial Use of the SynapsEd Engine with Instructor-Generated Materials.
+  \item Weeks 5--8: Student Participant Recruitment (20--30 students). Student Evaluation of Transparency, Relevance, and Engagement using Instructor-Generated Content and AI-Generated Pathways.
+  \item Weeks 9--11: Ongoing Data Collection from Instructor and Student Use. Qualitative and Quantitative Data Analysis.
+  \item Weeks 12--14: Final Data Analysis, Report Writing, and Presentation Preparation.
+\end{itemize}
+
+\section{Conclusion}
+
+This capstone addresses the urgent need for more adaptive and human-centered AI in higher education. Current AI learning platforms often lack the flexibility to cater to diverse learners and the crucial involvement of educators. By developing and evaluating the SynapsEd engine, which integrates RAG and DKT with instructor-curated content, this project offers a pathway towards truly personalized learning experiences that are both responsive and pedagogically sound.
+
+The emphasis on transparency and instructor oversight directly tackles key challenges in AI education, such as explainability and relevance. This work is important now because it provides a model for bridging the gap between automated personalization and the essential human element in teaching, ultimately aiming to create more effective, engaging, and equitable learning environments in higher education settings.
+
+\section{Budget}
+
+A detailed breakdown of these anticipated expenses is provided below:
+
+\textbf{Pinecone Vector Database (RAG Storage):}  
+The implementation of the RAG system will utilize Pinecone for vector storage, necessitating a premium subscription to accommodate multiple namespaces for individual instructors. The estimated annual cost for this service is \$325.
+
+\textbf{Google Cloud Storage:}  
+the cloud storage offered by Google Cloud Platform would cost around  \$225.
+
+\textbf{Model API Usage (Reasoning Models):}  
+The project will use reasoning models via API, with an estimated cost of \$1.2 per million tokens per model. Based on the anticipated volume of interactions and reasoning tasks and different models, the overall cost for API usage is estimated to be around \$200.
+
+\textbf{Student/Instructor Incentives:}  
+To encourage participation from the 20--30 student testers, and around 8-10 instructors, incentives such as gift cards, restaurant vouchers or similar tokens of appreciation will be provided. Assuming an incentive of approximately \$10--\$20 per student and 80\$-90\$ per instructor:
+\begin{itemize}
+  \item Estimated Cost: \$1320
+\end{itemize}
+
+\textbf{Total Estimated Budget:} \$2070 
+
+
+
+
+\bibliographystyle{stylefiles/ACM-Reference-Format}
+\bibliography{refs}
+
+\end{document}
+

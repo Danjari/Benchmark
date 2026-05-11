@@ -1,0 +1,19 @@
+{
+  "protocolShape": "1.0",
+  "type": "product",
+  "product": "SocraticRAG",
+  "activeVersion": "v1",
+  "anonId": "1b245f9e-5221-476f-aaaf-004912458101",
+  "createdAt": "2026-05-11T08:22:22Z",
+  "lastTwinUpdate": null,
+  "files": {
+    "twin": "osis/twin.md",
+    "inbox": ["osis/inbox/2026-05-11--socraticrag-benchmark-paper.md"],
+    "v1": {
+      "changelog": "osis/v1/changelog.md",
+      "systems": {
+        "core": {}
+      }
+    }
+  }
+}
