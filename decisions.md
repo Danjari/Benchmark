@@ -4,8 +4,6 @@ Each version entry documents what was surfaced on that date: issues flagged, dec
 
 ---
 
-
-
 ## Version 1.1 — 2026-05-11
 
 ### STATUS: All decisions resolved. Changes applied to benchmark paper.md, sources.md, and decisions.md.
@@ -102,11 +100,7 @@ Two professors confirmed as collaborators/co-authors. NYUAD affiliation. Author 
 
 *Version 1.1 closes all open decisions from Version 1.0. Changes applied 2026-05-11 to benchmark paper.md, sources.md, and this document.*
 
-
-
-
-
-## Version 1.0 — 2026-05-11
+## Version 1.0 — 2026-05-03
 
 ### STATUS: In review. Nothing is built. This is the plan-stage stress test.
 
@@ -238,6 +232,4 @@ Not yet specified in the proposal.
 ---
 
 ---
-
-
 
