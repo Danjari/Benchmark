@@ -11,8 +11,19 @@
     "inbox": ["osis/inbox/2026-05-11--socraticrag-benchmark-paper.md"],
     "v1": {
       "changelog": "osis/v1/changelog.md",
+      "thesis": "osis/v1/thesis.md",
+      "core.product": "osis/v1/core/product.md",
       "systems": {
-        "core": {}
+        "core": {
+          "iterations": {
+            "iteration-1--proposal-finalization": {
+              "brief": "osis/v1/core/iteration-1--proposal-finalization/brief.md",
+              "signals": [
+                "osis/v1/core/iteration-1--proposal-finalization/signals/2026-05-11--professor-session.md"
+              ]
+            }
+          }
+        }
       }
     }
   }

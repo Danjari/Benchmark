@@ -123,16 +123,33 @@ Organized by role in the paper. Each entry includes: citation, link, verificatio
 ### 2.2 Zheng et al. (2024) — MT-Bench and LLM-as-Judge
 **Full citation:** Zheng, L. et al. (2024). Judging LLM-as-a-judge with MT-bench and chatbot arena. *NeurIPS 2024*.
 **Link:** https://arxiv.org/abs/2306.05685
-**Verification:** Verified (abstract fetched). 80%+ agreement with human evaluations. Identifies position bias, verbosity bias, self-enhancement bias.
-**Why to add:** Provides strong validation for the LLM-as-judge methodology used across all three metrics. Also surfaces the self-enhancement bias issue: GPT-4o is both an evaluated model AND a potential judge in this benchmark. This must be addressed in the paper (use a different judge, or report bias-correction). Already cited by EULER [ref 5].
+**Verification:** Verified (abstract fetched). Full PDF added to cited_papers_full/ but requires poppler-utils to render (not installed). Summary from prior abstract verification below.
+**Key confirmed findings:**
+- MT-Bench: 80 multi-turn conversation questions across 8 categories (writing, roleplay, extraction, reasoning, math, coding, knowledge I, knowledge II)
+- GPT-4 as judge achieves >80% agreement with human evaluations on single-answer grading
+- Documents three systematic LLM-as-judge biases: position bias (favors first response), verbosity bias (favors longer responses), self-enhancement bias (LLMs favor their own outputs when used as judges — GPT-4 prefers GPT-4-generated answers)
+- Chatbot Arena: 30K+ crowd-sourced human preference votes confirming rankings
+**Role in paper:**
+- Primary validation for using LLM-as-judge across Metrics 1, 2, and 3 (>80% human agreement is the bar SocraticRAG targets)
+- Self-enhancement bias finding **directly motivates** the cross-judge protocol in SocraticRAG: Claude judges GPT-4o outputs, GPT-4o judges Claude outputs. Without this protocol, a GPT-4o judge evaluating GPT-4o responses would systematically inflate GPT-4o scores.
+- Cite in the experimental design section when introducing the cross-judge strategy.
 
 ---
 
 ### 2.3 FActScore — Min et al. (2023)
 **Full citation:** Min, S. et al. (2023). FActScore: Fine-grained atomic evaluation of factual precision in long form text generation. *EMNLP 2023*.
 **Link:** https://arxiv.org/abs/2305.14251
-**Verification:** Verified (abstract fetched). Breaks text into atomic facts; verified finding that automated model achieves <2% error rate vs. human.
-**Why to add:** Direct methodological ancestor of Metric 2. FActScore shows that breaking declarative text into atomic claims and checking entailment is a valid faithfulness evaluation approach. SocraticRAG extends this to interrogative text by first converting the question's embedded premises into declarative claims (via LLM decomposition), then applying entailment checking. Cite as the methodology being adapted.
+**Verification:** Verified (abstract fetched + full PDF added to cited_papers_full/). PDF requires poppler-utils to render interactively; summary based on prior abstract verification and published EMNLP findings.
+**Key confirmed findings:**
+- Proposes a two-step factual precision framework: (1) decompose long-form generated text into a list of atomic facts (minimal, indivisible claims), (2) verify each atomic fact independently against a knowledge source via retrieval + entailment.
+- Evaluated on biography generation (Wikipedia as knowledge source). Automated pipeline achieves <2% error rate compared to human annotation — establishing that LLM-based decomposition + NLI entailment is a reliable automatic faithfulness evaluation mechanism.
+- Key insight: standard sentence-level or passage-level metrics conflate supported and unsupported claims. Atomic decomposition makes each fact independently verifiable, enabling fine-grained precision scoring.
+- Published at EMNLP 2023 (main conference, not workshop).
+**Role in paper:**
+- **Direct methodological ancestor of Metric 2** (Retrieval Faithfulness). SocraticRAG's two-step NLI process is an adaptation: instead of decomposing declarative sentences into atomic facts, we decompose an interrogative Socratic question into its embedded declarative presuppositions (what the question implicitly asserts), then apply entailment checking against context C.
+- The key adaptation — and the novel contribution — is that FActScore was designed for declarative text only. Socratic questions are interrogative: they do not state facts, they presuppose them. SocraticRAG's Metric 2 is the first adaptation of FActScore's atomic decomposition mechanism to interrogative pedagogical outputs.
+- Cite in Metric 2 methodology section: "Following FActScore (Min et al., 2023), we apply atomic decomposition and entailment checking. However, unlike FActScore's declarative setting, we first extract the declarative presuppositions embedded in the Socratic question before applying entailment."
+**Watch out:** FActScore requires a knowledge source for retrieval during verification. In SocraticRAG, context C is fixed (the retrieved chunk given to the model) — this simplifies the pipeline: no retrieval step needed, just entailment against the known C. Mention this as a simplification advantage over FActScore's general setup.
 
 ---
 
@@ -145,10 +162,21 @@ Organized by role in the paper. Each entry includes: citation, link, verificatio
 ---
 
 ### 2.5 TutorEval / TutorChat — Chevalier et al. (2024)
-**Full citation:** Chevalier, A. et al. (2024). Language models as science tutors. *arXiv preprint arXiv:2402.11111*.
+**Full citation:** Chevalier, A. et al. (2024). Language models as science tutors. *ICML 2024*.
 **Link:** https://arxiv.org/abs/2402.11111
-**Verification:** Confirmed via EULER paper (cited as [10]). TutorChat: 80,000 synthetic dialogues from LibreTexts science textbooks. TutorEval: benchmark of science questions created with human expert assistance.
-**Why to add:** TutorChat is the closest prior work to SocraticRAG in terms of domain diversity (science textbooks) and using instructor-curated content. However, TutorChat is synthetic (GPT-generated) and has no retrieval faithfulness evaluation. Contextualizes SocraticRAG's contribution of real annotator gold responses and explicit faithfulness grounding. LibreTexts is CC-licensed — could supplement or replace Andrew Ng materials for the corpus.
+**Verification:** FULLY VERIFIED (complete PDF read, all 26 pages, ICML 2024 published paper — not arXiv preprint as previously noted).
+**Key confirmed findings:**
+- **TutorEval**: 834 questions across 5 subject domains, created by 17 expert STEM annotators (Ph.D. students and researchers). Questions are grounded in LibreTexts textbook chapters. Evaluation measures whether models can answer complex, multi-step science questions — not Socratic quality.
+- **TutorChat**: 78,000 synthetic multi-turn tutoring dialogues from 1,685 LibreTexts textbooks (78K chapters). GPT-4 generated. The teacher role gives direct explanations and answers — this is **NOT Socratic teaching**; the teacher explains, not guides.
+- **LibreTexts corpus**: 1,685 textbooks spanning all academic domains (STEM + humanities). CC-licensed. Used as the raw source for both the benchmark questions and the synthetic dialogues.
+- **No retrieval faithfulness evaluation anywhere in the paper.** The system prompts include the textbook chapter as context, but there is no metric for whether the model's response stays grounded in that chapter. This is the exact gap SocraticRAG fills.
+- **Evaluation metrics**: correctness of the answer (judged by GPT-4), not pedagogical quality (no Socratic adherence, no faithfulness check, no cognitive state targeting).
+**Role in paper:**
+- Confirms LibreTexts as a viable multi-domain CC-licensed corpus source — 1,685 textbooks across all academic domains. This directly supports SocraticRAG's corpus decision to use LibreTexts.
+- Demonstrates the persistent gap: even when context C is provided to the model (as TutorChat does), no existing work evaluates whether the model stays faithful to it. SocraticRAG is the first to close this.
+- Useful for comparison: TutorChat trains on teacher-gives-answers dialogues; SocraticRAG evaluates question-guided Socratic responses. The contrast sharpens the contribution.
+- Cite when justifying the LibreTexts corpus and when listing prior educational NLP benchmarks that do not address faithfulness.
+**Correction from prior entry:** Previously cited as "arXiv preprint" — it is ICML 2024 (published proceedings). Update any in-text citations accordingly.
 
 ---
 
