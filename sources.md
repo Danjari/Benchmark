@@ -9,9 +9,9 @@ Organized by role in the paper. Each entry includes: citation, link, verificatio
 ### 1.1 RAGAS — Es et al. (2024)
 **Full citation:** Es, S., James, J., Anke, L. E., & Schockaert, S. (2024). RAGAS: Automated evaluation of retrieval augmented generation. *EACL 2024 (Demo Track)*.
 **Link:** https://aclanthology.org/2024.eacl-demo.16
-**Verification:** Partially verified (abstract fetched). Full mechanism requires PDF.
-**Role in paper:** Establishes the dominant RAG faithfulness framework. Its claim-decomposition mechanism — breaking answers into atomic declarative statements and checking entailment against retrieved context — structurally breaks when the output is an interrogative (Socratic question). No declarative claims exist to decompose, so the faithfulness score is undefined or vacuous. This is the primary reason SocraticRAG cannot use RAGAS and must propose Metric 2.
-**Watch out:** The paper confirms reference-free evaluation and was validated on WikiEval (declarative QA dataset). Confirm from full text that WikiEval is factual Q&A only and that no interrogative output format is addressed.
+**Verification:** FULLY VERIFIED (complete PDF read).
+**Role in paper:** Establishes the dominant RAG faithfulness framework. Faithfulness score F = |V|/|S| where S = set of atomic statements extracted from the generated answer, V = subset supported by retrieved context. The mechanism structurally breaks when the output is an interrogative (Socratic question): the statement extraction step yields no atomic declarative claims to verify, making F undefined or trivially zero. Validated exclusively on WikiEval — 50 Wikipedia pages with factual declarative Q&A (e.g., "Who directed Oppenheimer?"). No interrogative output format is addressed anywhere in the paper. This confirms SocraticRAG's Metric 2 cannot use RAGAS and must propose a presupposition-extraction adaptation.
+**Watch out:** Confirmed from full text — WikiEval is purely declarative QA, 50 Wikipedia pages. The RAGAS mechanism produces a vacuous score for any question-form output. No competing faithfulness framework for interrogative outputs exists in the literature.
 
 ---
 
@@ -33,28 +33,34 @@ Organized by role in the paper. Each entry includes: citation, link, verificatio
 ### 1.3 SocraticLM — Liu, J. et al. (2024)
 **Full citation:** Liu, J. et al. (2024). SocraticLM: Exploring socratic personalized teaching with large language models. *NeurIPS 2024*.
 **Link:** https://proceedings.neurips.cc/paper_files/paper/2024/hash/9bae399d1f34b8650351c1bd3692aeae-Abstract-Conference.html
-**Verification:** Partially verified (abstract page fetched). Fetch says "six student cognitive types" in the dataset; the proposal adopts four from Discerning Minds instead.
+**Verification:** FULLY VERIFIED (complete PDF read).
 **Role in paper:**
 - Provides the Dean-Teacher-Student multi-agent pipeline for generating Socratic dialogues, which SocraticRAG adapts for its seed generation step.
-- Demonstrates that GPT-4 fails at Socratic teaching even when explicitly instructed.
-- Contains SocraTeach: 35,000 multi-round dialogues (208K single-round exchanges) on math problems.
-- NOTE: The dataset is math-only (like MathTutorBench). SocraticRAG's corpus spans multiple domains (lecture slides, PDFs), which is explicitly stated as a differentiator.
-- NOTE: SocraticLM uses "six student cognitive types" while Discerning Minds uses four. The proposal uses four (from Discerning Minds). You must explicitly state why you chose Discerning Minds' taxonomy over SocraticLM's in the methodology section.
+- Demonstrates that GPT-4 fails at Socratic teaching even when explicitly instructed, directly providing solutions rather than guiding questions.
+- Contains SocraTeach: 35,000 multi-round dialogues (208K single-round exchanges) on math problems (GSM8K and MAWPS datasets).
+- The Dean agent's three rejection criteria are **domain-agnostic**: (1) Socratic questioning style (avoids giving answers directly), (2) points out student errors, (3) uses teacher-like language. SocraticRAG adds a fourth criterion specific to RAG: (4) the question draws only on concepts present in chunk C.
+- CRITICAL: The "31.2% hallucination reduction" figure does NOT come from this paper. The 31.2% in SocraticLM is a fine-tuning ablation: removing problem-solving data from training causes a 31.2%/9.7% accuracy drop on GSM8K/MAWPS. It measures accuracy loss in fine-tuning, not hallucination reduction in inference. Do not cite this as a CoT/hallucination result. Use Wei et al. (2022) for CoT motivation instead.
+- The silver-to-gold gold standard methodology in SocraticLM: human professors authored responses via revision of LLM-generated candidates — direct precedent for SocraticRAG's Option C hybrid approach.
+- NOTE: The dataset is math-only. SocraticRAG's corpus spans multiple domains, which is a key differentiator.
+- NOTE: SocraticLM uses six student cognitive states. SocraticRAG uses four from Discerning Minds because those four (accurate/erroneous/comprehension/confusion) form two clean orthogonal axes (answer-correctness vs. metacognitive-expression), making controlled evaluation cleaner. The paper should state this justification explicitly.
 
 ---
 
 ### 1.4 MathTutorBench — Macina et al. (2025)
 **Full citation:** Macina, J. et al. (2025). MathTutorBench: A benchmark for measuring open-ended pedagogical capabilities of LLM tutors. *EMNLP 2025 (Oral)*.
 **Link:** https://arxiv.org/abs/2502.18940
-**Verification:** Partially verified (abstract fetched). Key findings confirmed.
+**Verification:** FULLY VERIFIED (complete PDF read, EMNLP 2025 Oral).
 **Role in paper:**
 - The strongest precedent: EMNLP accepts holistic pedagogical benchmarks as oral papers.
-- Key confirmed finding: "subject expertise does not immediately translate to good teaching."
-- Key confirmed finding: "tutoring becomes more challenging in longer dialogs."
+- Exact benchmark size: **9,125 items across 7 tasks** (Socratic Questioning, Mistake Identification, Providing Feedback, Scaffolding, Error Correction, Subgoal Decomposition, Guided Discovery).
+- Key confirmed quote: "subject expertise does not immediately translate to good teaching."
+- Key confirmed quote: "tutoring appears to become more challenging in longer dialogs."
 - Explicitly limited to math (GSM8K problems) and entirely retrieval-free — the gap SocraticRAG fills.
-- Confirms that teacher-created ground truth is essential and that standard metrics (BLEU, ROUGE) are inadequate for open-ended tutoring evaluation.
-- Confirms "Leaked Solution (%)" as a central measurable dimension (equivalent to SocraticRAG's Metric 1).
-- NOTE: Need to verify from full paper: exact number of benchmark items, specific models evaluated, and exact wording of the statement about retrieval-free limitation.
+- Confirms that teacher-created ground truth is essential: the Bridge dataset is created by expert revision of novice teacher LLM-generated responses — direct precedent for SocraticRAG's silver-to-gold methodology.
+- Confirms BLEU/ROUGE are "noisy and unreliable" for open-ended tutoring evaluation.
+- **NEW GAP ARGUMENT**: MathTutorBench evaluates its Socratic Questioning task using BLEU-4 despite arguing BLEU is unreliable. This internal contradiction motivates SocraticRAG's purpose-built three-axis metric design.
+- **CORRECTION on "Leaked Solution (%)"**: This exact phrase does NOT appear as a named metric in MathTutorBench. The analogous concept appears as a criterion inside the Scaffolding Score reward model (does the response reveal the solution?). Cite it as "a revealing-answer criterion within the Scaffolding Score" not as "Leaked Solution (%)."
+- LearnLM confirmed evaluated in MathTutorBench: available as **learnlm-1.5-pro-experimental** via Google AI API.
 
 ---
 
@@ -70,20 +76,28 @@ Organized by role in the paper. Each entry includes: citation, link, verificatio
 ### 1.6 Lefton et al. (2025) — A Socratic RAG Approach
 **Full citation:** Lefton, L. et al. (2025). A Socratic RAG approach to research topic disambiguation. *AAAI 2025 Workshop on Knowledge Axiomatization*.
 **Link:** https://arxiv.org/abs/2502.15005
-**Verification:** Verified (abstract fetched). Full paper: 6-page workshop paper.
-**Role in paper:** Demonstrates a system that combines RAG with Socratic dialogue but includes zero evaluation of whether the Socratic outputs stay faithful to retrieved material.
-**CRITICAL CORRECTION NEEDED:** This paper is about research topic disambiguation (mapping natural language queries to academic Knowledge Organization Systems like library taxonomies). It is NOT about educational tutoring. Its Socratic dialogue is about helping researchers find research topics, not about teaching students. The framing in the proposal ("Lefton et al. propose a Socratic RAG system but include no faithfulness evaluation") is accurate but the context implies educational setting. Recommend reframing to: "Beyond educational settings, Lefton et al. (2025) demonstrate that Socratic RAG approaches lack faithfulness evaluation even in information retrieval contexts, confirming the systemic absence of this evaluation component."
+**Verification:** FULLY VERIFIED (complete PDF read). 6-page work-in-progress paper.
+**Role in paper:** Demonstrates that Socratic RAG systems in information retrieval contexts also lack faithfulness evaluation, confirming the systemic absence of this component beyond educational settings.
+**CORRECTION APPLIED:** This paper is about academic Knowledge Organization System (KOS) disambiguation — mapping natural language queries to library taxonomy categories to help researchers find research topics. It is NOT about educational tutoring. The paper explicitly labels itself "work in progress." The Socratic dialogue helps researchers disambiguate research topics, not teach students. Framing in the paper has been updated: cited as "information retrieval contexts (academic knowledge organization system disambiguation)" rather than as educational precedent.
+**Why still useful:** It confirms that the gap in faithfulness evaluation is systemic, not limited to the educational domain. Any Socratic RAG system, regardless of domain, currently ships without faithfulness evaluation.
 
 ---
 
 ### 1.7 Discerning Minds — Liu, Y. et al. (2025)
 **Full citation:** Liu, Y. et al. (2025). Discerning minds or generic tutors? Evaluating LLMs as adaptive instructional agents. *arXiv preprint arXiv:2508.06583*.
 **Link:** https://arxiv.org/abs/2508.06583
-**Verification:** Partially verified (abstract fetched). Full paper not read.
+**Verification:** FULLY VERIFIED (complete PDF read, v2 dated September 29, 2025).
 **Role in paper:** Provides the GuideEval framework (Perception-Orchestration-Elicitation) and the four cognitive state taxonomy that SocraticRAG adopts. Shows LLMs fail under negative student states (confusion, requiring redirection).
-**NOTE:** This is an August 2025 arXiv preprint (ID: 2508.06583). Verify whether it has been accepted anywhere. If submitting to EMNLP 2025, citing an August 2025 preprint may raise questions about timeline. Check submission deadline.
-**NOTE:** Fetch confirmed the POE framework but did NOT explicitly confirm all four cognitive states (accurate, erroneous, comprehension, confusion). Must verify from full paper that these exact four states are named.
-**NOTE:** The paper says "89-97% agreement between LLM-based and human scoring" for their pedagogical metrics — must verify this claim from full paper, as the proposal relies on it for Phase 4 validation design.
+**Four cognitive states CONFIRMED with operational definitions:**
+- **Accurate**: student gives a correct answer (answer-correctness axis = positive)
+- **Erroneous**: student gives an incorrect answer (answer-correctness axis = negative)
+- **Comprehension**: student explicitly expresses understanding (metacognitive-expression axis = positive)
+- **Confusion**: student explicitly expresses uncertainty or misunderstanding (metacognitive-expression axis = negative)
+- The two axes are **orthogonal**: a student can be accurate (correct answer) but confused (uncertain why), or erroneous (wrong answer) but show comprehension (knows what they got wrong). All four states are operationally distinct.
+**89-97% agreement CONFIRMED from Table 3:** GPT-4o judge achieves 89-97% agreement with human scoring across all three POE phases (Perception, Orchestration, Elicitation). This directly supports SocraticRAG's LLM-as-judge validation design.
+**Bloom's taxonomy operationalized:** Elicitation scoring uses E-Level 1 (recall), E-Level 2 (application), E-Level 3 (higher-order synthesis). This is the direct NLP operationalization needed for SocraticRAG Metric 3 — cite GuideEval's Elicitation rubric from Table 1.
+**Dataset:** 180 scenarios, 4 cognitive states per scenario, evaluated on GPT-4o, Claude 3.5 Sonnet, and Qwen2.5-7B-SocraticLM (the model SocraticRAG uses in its model list).
+**EMNLP 2026 safety:** v2 is dated September 29, 2025. Safe to cite for EMNLP 2026 submission.
 
 ---
 
@@ -166,8 +180,7 @@ Organized by role in the paper. Each entry includes: citation, link, verificatio
 **Why needed:** GPT-4o is both an evaluated model and the intended judge in this benchmark. MT-Bench (2.2 above) names this bias; we need a paper that quantifies it, so we can propose a bias-mitigation strategy (e.g., using Claude as judge when evaluating GPT-4, and GPT-4 when evaluating Claude).
 
 ### 3.3 A Bloom's taxonomy paper with NLP operationalization
-**What we need:** A paper that operationalizes Bloom's taxonomy levels (remember, understand, apply, analyze, evaluate, create) in an NLP or LLM evaluation context.
-**Why needed:** Metric 3 references Bloom's taxonomy for "cognitive depth" scoring, but the current paper cites no NLP paper that does this operationally. The SynapsEd paper cites Herrmann-Werner et al. (2024) on GPT-4 + Bloom's for medical exams — this could work.
+**STATUS: RESOLVED.** Discerning Minds (Liu et al., 2025) explicitly operationalizes Bloom's taxonomy for Elicitation scoring via E-Level 1 (recall/remember), E-Level 2 (application/apply), E-Level 3 (higher-order synthesis/analyze-evaluate) in Table 1. This is the direct NLP operationalization needed for Metric 3 — cite GuideEval's Elicitation rubric from Table 1 as the scoring methodology for cognitive depth. No additional paper is needed.
 
 ### 3.4 Open educational resources for multi-domain corpus
 **What we need:** Confirm that LibreTexts (used by TutorChat) and MIT OCW are appropriate corpus sources with confirmed licensing, and find at least one more source for non-STEM courses (e.g., social science, history) to ensure domain diversity.
@@ -193,11 +206,11 @@ Organized by role in the paper. Each entry includes: citation, link, verificatio
 ## 6. Dataset Scale Decision
 
 **Reference points from comparable EMNLP benchmarks:**
-- MathTutorBench: not yet verified exact count (need to check)
+- MathTutorBench: **9,125 items across 7 tasks** (verified from full PDF)
 - MathDial: 3,000 one-shot interactions
-- SocraticLM / SocraTeach: 35,000 generated dialogues
+- SocraticLM / SocraTeach: 35,000 generated dialogues (208K single-round)
 - EULER: 100 test samples, 500-650 training samples (very small)
-- Discerning Minds / GuideEval: not yet verified
+- Discerning Minds / GuideEval: **180 scenarios, 4 cognitive states** (verified from full PDF)
 
 **Recommended scale for SocraticRAG:**
 - Corpus: 50-100 document chunks across 5-10 courses and 3-4 domains

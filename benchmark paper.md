@@ -24,7 +24,7 @@ Researchers are already beginning to combine RAG with Socratic dialogue (Lefton 
 
 In parallel, a growing body of NLP research has begun evaluating the Socratic abilities of LLMs. EULER (Bonino et al., 2024\) fine-tunes LLMs using Direct Preference Optimization to steer them away from direct answers and toward guiding questions. SocraticLM (Liu et al., 2024\) constructs a dataset of 35,000 Socratic-style dialogues and trains models across five pedagogical dimensions, explicitly arguing that "current LLM-based application in personalized teaching predominantly follows a 'Question-Answering' paradigm, where students are passively provided with answers and explanations." MathTutorBench (Macina et al., 2025), an EMNLP 2025 oral, provides the most comprehensive evaluation to date, covering Socratic questioning, mistake identification, and scaffolding generation across multiple models, finding that "subject expertise does not immediately translate to good teaching" and that "tutoring appears to become more challenging in longer dialogs, where simpler questioning strategies begin to fail."
 
-**The Problem:** None of these approaches test whether the model's Socratic outputs stay faithful to a specific retrieved educational document. The evaluation is always open-domain, the model can ask whatever it wants, constrained by nothing. And this has measurable consequences. Bonino et al. (2024) empirically show that even fine-tuned Socratic LLMs drift from the original topic across multi-turn interactions, generating responses that diverge from the original educational subject. MathTutorBench itself acknowledges this limitation, noting that the benchmark "does not contain all possible dimensions for educational evaluation" and is entirely retrieval-free. None of these failure analyses even ask whether the model's outputs are constrained by any retrieved instructional context. The question of pedagogical faithfulness is left unaddressed.
+**The Problem:** None of these approaches test whether the model's Socratic outputs stay faithful to a specific retrieved educational document. The evaluation is always open-domain, the model can ask whatever it wants, constrained by nothing. And this has measurable consequences. Bonino et al. (2024) empirically show that even fine-tuned Socratic LLMs drift from the original topic across multi-turn interactions, generating responses that diverge from the original educational subject. MathTutorBench itself acknowledges this limitation, noting that the benchmark "does not contain all possible dimensions for educational evaluation" and is entirely retrieval-free. Strikingly, MathTutorBench evaluates its Socratic Questioning task using BLEU-4 while simultaneously arguing that BLEU is “noisy and unreliable” for open-ended pedagogical evaluation—an internal contradiction that demonstrates the field’s lack of purpose-built evaluation metrics for this task. None of these failure analyses even ask whether the model's outputs are constrained by any retrieved instructional context. The question of pedagogical faithfulness is left unaddressed.
 
 ## **1.3  Conclusion: The Gap**
 
@@ -38,13 +38,13 @@ To create SocraticRAG for EMNLP, we construct a dataset of retrieval-constrained
 
 ## **2.1  The Dataset Construction (Edu-QA-Socratic)**
 
-* **Corpus Collection.** Collect a corpus of real university course materials, instructor slide PDFs ( we will be using Andrew Ng’s Course materials), syllabi, and reading excerpts, and chunk them using OCR and semantic segmentation, mirroring the SynapsEd ingestion pipeline. This distinguishes SocraticRAG from all existing Socratic benchmarks, which draw from open-domain math problems (MathTutorBench, Macina et al., 2025\) or single-platform dialogues (Discerning Minds, Liu et al., 2025).
+* **Corpus Collection.** Collect a corpus of real university course materials, instructor slide PDFs sourced from MIT OpenCourseWare (CC BY-NC-SA 4.0) and LibreTexts, syllabi, and reading excerpts, and chunk them using our own OCR and semantic chunking pipeline. This distinguishes SocraticRAG from all existing Socratic benchmarks, which draw from open-domain math problems (MathTutorBench, Macina et al., 2025\) or single-platform dialogues (Discerning Minds, Liu et al., 2025).
 
 * **Student Profile Construction.** Using literature backed concept we will construct students profiles that emulates real world scenarios. And encoding them with four cognitive states, accurate, erroneous, comprehension, and confusion, following the taxonomy from Discerning Minds (Liu et al., 2025), which demonstrates these are the most diagnostically useful states for exposing model weaknesses.
 
 * **Seed Generation (LLM-Assisted).** Prompt a strong teacher LLM to generate candidate student misconceptions and corresponding utterances for each chunk, following the "Dean-Teacher-Student" multi-agent pipeline introduced in SocraticLM (Liu et al., 2024). The Dean agent serves an oversight role, rejecting candidate utterances that are pedagogically implausible or that cannot be derived from the retrieved chunk.
 
-* **Expert Annotation (Gold Standard).** Have expert educators draft the Golden Socratic Response (*R*₀ₙₑˣ) for each scenario: a response that successfully guides the student using only content present in the retrieved chunk, with supporting sentences explicitly highlighted. This teacher-annotated approach follows MathTutorBench's finding that teacher-created data is essential for capturing genuine pedagogical quality (Macina et al., 2025).
+* **Expert Annotation (Gold Standard).** We first generate candidate Socratic responses using a strong teacher LLM, then have expert educators review each scenario and select or lightly revise the best candidate as the Golden Socratic Response (*R*₀ₙₑˣ), with supporting sentences in C explicitly highlighted. This silver-to-gold pipeline follows MathTutorBench's validated practice of expert revision of LLM-generated candidates as the standard for capturing genuine pedagogical quality (Macina et al., 2025).
 
 ## **2.2  The Evaluation Axes (What the Benchmark Measures)**
 
@@ -54,7 +54,7 @@ We run state-of-the-art models, GPT-4.5, Claude 4.6 Sonnet, Llama-3.1 (8B and 70
 
 **What it measures.** Did the LLM act like a vending machine and just give the answer, violating the Socratic constraint?
 
-**Measurement.** We adapt the "reveal\_answer" rubric from EULER's validated GPT-4o judge (Bonino et al., 2024), which evaluates four dimensions of Socratic quality, question presence, on-topic relevance, helpfulness, and answer revelation, and was validated against human annotators with a Pearson correlation of p = 0.78. We use the "reveal\_answer" criterion as a binary classifier: a response scores 0 if it states the answer directly and 1 if it successfully withholds it. MathTutorBench (Macina et al., 2025\) operationalizes the same failure mode as "Leaked Solution (%)", confirming it as a central and measurable dimension of tutoring quality.
+**Measurement.** We adapt the "reveal\_answer" rubric from EULER's validated GPT-4o judge (Bonino et al., 2024), which evaluates four dimensions of Socratic quality, question presence, on-topic relevance, helpfulness, and answer revelation, and was validated against human annotators with a Pearson r = 0.78 (reported as p = 0.78 in the original paper, non-standard notation). We use the "reveal\_answer" criterion as a binary classifier: a response scores 0 if it states the answer directly and 1 if it successfully withholds it. MathTutorBench (Macina et al., 2025\) operationalizes the same failure mode as a revealing-answer criterion within its Scaffolding Score reward model, confirming it as a central and measurable dimension of tutoring quality.
 
 **Why it matters.** SocraticLM (Liu et al., 2024\) demonstrates that current LLMs, including GPT-4, regularly fail this criterion, directly providing solutions when instructed to teach Socratically. Bonino et al. (2024) confirm the same failure in their qualitative analysis: GPT-4 gives the answer directly in their sample output, which they note "contradicts the demands of Socratic teaching."
 
@@ -64,7 +64,7 @@ We run state-of-the-art models, GPT-4.5, Claude 4.6 Sonnet, Llama-3.1 (8B and 70
 
 **Measurement.** We use Natural Language Inference (NLI) to verify whether each premise implicit in the model's question is entailed by C. Concretely, we decompose the Socratic question into its embedded assumptions, for example, the question "What do you think happens when pressure increases in this system?" embeds the assumption that the system involves pressure, and verify whether that assumption is present in C. If the model embeds a concept not present in C, it receives a penalty for Unverifiable Specificity. This is our novel contribution: an adaptation of NLI-based faithfulness checking from the declarative QA setting to the non-declarative pedagogical setting.
 
-**Why this is necessary.** Ilkou et al. (2024) explicitly state that RAG implementations for Socratic tutoring "do not include evaluation metrics about the quality of the retrieved documents nor human aspects," and call for an extension of benchmarking techniques. Lefton et al. (2025) propose a Socratic RAG system but include no faithfulness evaluation whatsoever. This metric directly fills the gap both papers identify. Furthermore, this measurement is structurally impossible under RAGAS (Es et al., 2024), whose faithfulness score presupposes declarative outputs and breaks when applied to interrogative forms.
+**Why this is necessary.** Ilkou et al. (2024) explicitly state that RAG implementations for Socratic tutoring "do not include evaluation metrics about the quality of the retrieved documents nor human aspects," and call for an extension of benchmarking techniques. Lefton et al. (2025) demonstrate that Socratic RAG systems in information retrieval contexts (academic knowledge organization system disambiguation) also include no faithfulness evaluation, confirming the systemic absence of this component. This metric directly fills the gap both papers identify. Furthermore, this measurement is structurally impossible under RAGAS (Es et al., 2024), whose faithfulness score presupposes declarative outputs and breaks when applied to interrogative forms.
 
 ### ***Metric 3: Pedagogical Alignment (Student State Targeting)***
 
@@ -92,19 +92,19 @@ The paper concludes by showing that while modern LLMs perform reasonably on eith
 
 Given a pedagogical Context (C), a chunk extracted from instructor-uploaded course materials, a simulated Student Profile (P) encoding a specific cognitive state and misconception, and a Student Utterance (U) expressing that state, the model must generate a Response (R) that acts as a Socratic guiding question derived strictly from C, without revealing the answer and without introducing concepts absent from C.
 
-*Input:  (C, P, U)   ⟶   Output:  R  such that  (1) R is a question,  (2) R ⊢ C,  (3) R ∩ ¬sol ≠ ∅*
+*Input:  (C, P, U)   ⟶   Output:  R  such that  (1) R is a question,  (2) R ⊢ C,  (3) R ⊬ sol*
 
 This task formulation is distinct from all existing Socratic benchmarks in one critical way: the model's output is simultaneously constrained by pedagogical form (it must be a question, not an answer) and by retrieval faithfulness (it must stay within C). No existing benchmark evaluates both constraints jointly.
 
 ### ***Data Curation: The Silver-to-Gold Pipeline***
 
-* **Corpus Collection.** We extract text chunks from real university course materials, lecture slide PDFs, syllabi, and reading excerpts, using OCR and semantic chunking. This situates SocraticRAG in authentic instructor-uploaded content, directly distinguishing it from MathTutorBench (Macina et al., 2025), which sources all problems from GSM8K, and from Discerning Minds (Liu et al., 2025), which draws from a single middle-school science tutoring platform. Our multi-domain, multi-format corpus reflects the real-world deployment conditions of RAG-based educational systems like SynapsEd.
+* **Corpus Collection.** We extract text chunks from real university course materials, lecture slide PDFs sourced from MIT OpenCourseWare (CC BY-NC-SA 4.0) and LibreTexts, syllabi, and reading excerpts, using our own OCR and semantic chunking pipeline. This situates SocraticRAG in authentic instructor-uploaded content, directly distinguishing it from MathTutorBench (Macina et al., 2025), which sources all problems from GSM8K, and from Discerning Minds (Liu et al., 2025), which draws from a single middle-school science tutoring platform. Our multi-domain, multi-format corpus reflects the real-world deployment conditions of RAG-based educational systems.
 
 * **Student Profile Construction.** We simulate four cognitive states per document chunk, following the taxonomy established in Discerning Minds (Liu et al., 2025): accurate (correct understanding), erroneous (incorrect answer), comprehension (explicit understanding), and confusion (expressed uncertainty). Liu et al. (2025) demonstrate empirically that current LLMs handle positive states effectively but systematically fail under negative states, particularly when misconceptions must be inferred rather than explicitly stated, making these four states the most diagnostically useful categories for exposing model weaknesses. For each chunk, we generate at least one Student Utterance per state, producing contrastive pairs (e.g., erroneous vs. accurate under identical context) that enable controlled evaluation of model sensitivity.
 
 * **Seed Generation (LLM-Assisted).** We prompt a strong teacher LLM to generate candidate student misconceptions and corresponding utterances for each chunk, following the "Dean-Teacher-Student" multi-agent pipeline introduced in SocraticLM (Liu et al., 2024). The Dean agent serves an oversight role, rejecting candidate utterances that are pedagogically implausible or that cannot be derived from C.
 
-* **Expert Annotation (Gold Standard).** Human educators review each scenario and draft the Golden Socratic Response (R₀ₙₑˣ): a response that successfully guides the student toward the correct understanding using only content present in C. Annotators explicitly highlight the supporting sentences in C that justify the pedagogical intervention, creating a mapping that anchors the faithfulness evaluation in Phase 2\. This follows MathTutorBench's finding that teacher-created data is essential for capturing high-quality tutoring and must be prioritized in the final data mix (Macina et al., 2025). Standard automatic metrics based on word overlap are unreliable for open-ended pedagogical evaluation (Macina et al., 2025), making expert-annotated ground truth a necessary rather than optional component.
+* **Expert Annotation (Gold Standard).** Expert educators review LLM-generated candidate responses for each scenario and select or lightly revise the best as the Golden Socratic Response (R₀ₙₑˣ): a response that successfully guides the student toward the correct understanding using only content present in C. Annotators explicitly highlight the supporting sentences in C that justify the pedagogical intervention, creating a mapping that anchors the faithfulness evaluation in Phase 2\. This follows MathTutorBench's finding that teacher-created data is essential for capturing high-quality tutoring and must be prioritized in the final data mix (Macina et al., 2025). Standard automatic metrics based on word overlap are unreliable for open-ended pedagogical evaluation (Macina et al., 2025), making expert-annotated ground truth a necessary rather than optional component.
 
 ## **Phase 2: Evaluation Metrics, Three Orthogonal Axes**
 
@@ -114,7 +114,7 @@ Standard metrics like BLEU and ROUGE are inadequate for open-ended conversationa
 
 **What it measures.** Did the model give the answer directly instead of guiding the student to discover it?
 
-**Measurement.** We prompt an evaluator LLM with a strict rubric to flag responses that reveal the answer or solution directly rather than posing a guiding question. The rubric is adapted from EULER's GPT-4o judge (Bonino et al., 2024), which evaluates four dimensions of Socratic quality, question presence, on-topic relevance, helpfulness, and answer revelation, and was validated against human annotators with a Pearson correlation of p = 0.78. We use the "reveal\_answer" criterion as a binary classifier: a response scores 0 if it states the answer directly and 1 if it successfully withholds it. MathTutorBench (Macina et al., 2025\) operationalizes the same failure mode as "Leaked Solution (%)", confirming it as a central and measurable dimension of tutoring quality.
+**Measurement.** We prompt an evaluator LLM with a strict rubric to flag responses that reveal the answer or solution directly rather than posing a guiding question. The rubric is adapted from EULER's GPT-4o judge (Bonino et al., 2024), which evaluates four dimensions of Socratic quality, question presence, on-topic relevance, helpfulness, and answer revelation, and was validated against human annotators with a Pearson r = 0.78 (reported as p = 0.78 in the original paper, non-standard notation). We use the "reveal\_answer" criterion as a binary classifier: a response scores 0 if it states the answer directly and 1 if it successfully withholds it. MathTutorBench (Macina et al., 2025\) operationalizes the same failure mode as a revealing-answer criterion within its Scaffolding Score reward model, confirming it as a central and measurable dimension of tutoring quality.
 
 **Why it matters.** SocraticLM (Liu et al., 2024\) demonstrates that current LLMs, including GPT-4, regularly fail this criterion, directly providing solutions when instructed to teach Socratically. Bonino et al. (2024) confirm the same failure in their qualitative analysis: GPT-4 gives the answer directly in their sample output, which they note "contradicts the demands of Socratic teaching."
 
@@ -124,7 +124,7 @@ Standard metrics like BLEU and ROUGE are inadequate for open-ended conversationa
 
 **Measurement.** We use Natural Language Inference (NLI) to verify whether each premise implicit in the model's question is entailed by C. Concretely, we decompose the Socratic question into its embedded assumptions, for example, the question "What do you think happens when pressure increases in this system?" embeds the assumption that the system involves pressure, and verify whether that assumption is supported by C. If the model embeds a concept not present in C, it receives a penalty for Unverifiable Specificity. This is our novel contribution: an adaptation of NLI-based faithfulness checking from the declarative QA setting to the non-declarative pedagogical setting.
 
-**Why this is necessary.** Ilkou et al. (2024) explicitly state that RAG implementations for Socratic tutoring "do not include evaluation metrics about the quality of the retrieved documents nor human aspects," and call for an extension of benchmarking techniques. Lefton et al. (2025) propose a Socratic RAG system but include no faithfulness evaluation whatsoever. This metric directly fills the gap both papers identify.
+**Why this is necessary.** Ilkou et al. (2024) explicitly state that RAG implementations for Socratic tutoring "do not include evaluation metrics about the quality of the retrieved documents nor human aspects," and call for an extension of benchmarking techniques. Lefton et al. (2025) demonstrate that Socratic RAG systems in information retrieval contexts (academic knowledge organization system disambiguation) also include no faithfulness evaluation, confirming the systemic absence of this component. This metric directly fills the gap both papers identify.
 
 ### ***Metric 3: Pedagogical Alignment (Student State Targeting)***
 
@@ -142,7 +142,7 @@ We evaluate across three model categories, following MathTutorBench's experiment
 
 * **General LLMs:** GPT-4o, Claude 4.6 Sonnet, Llama-3.1 (8B and 70B)
 
-* **Specialized tutoring models:** LearnLM, EULER (Bonino et al., 2024), the only fine-tuned Socratic model with a publicly available pipeline and evaluation rubric
+* **Specialized tutoring models:** LearnLM (available as learnlm-1.5-pro-experimental via Google AI API), Qwen2.5-7B-SocraticLM (Liu et al., 2024; CogBase-USTC/SocraticLM on HuggingFace), a fine-tuned Socratic model with publicly available weights
 
 * **Math-specialized models:** included as a baseline to test whether subject expertise compensates for pedagogical and faithfulness deficits, following MathTutorBench's finding that "subject expertise does not immediately translate to good teaching" (Macina et al., 2025\)
 
@@ -152,7 +152,7 @@ We evaluate across three model categories, following MathTutorBench's experiment
 
 * **Few-Shot (In-Context Learning):** 3–5 examples of retrieval-constrained Socratic turns drawn from the gold dataset, where each example shows the context C, student utterance U, and R₀ₙₑˣ alongside the highlighted supporting sentences.
 
-* **Chain-of-Thought (CoT):** The model outputs an explicit rationale, Identify misconception → Locate supporting sentences in C → Draft question, before producing R. Hu et al. (2025) demonstrate that structuring self-questioning as an iterative step-by-step process reduces hallucinations by 31.2% in multimodal reasoning, suggesting the same principle may apply to text-based constrained generation. We test whether this holds in our educational RAG setting.
+* **Chain-of-Thought (CoT):** The model outputs an explicit rationale, Identify misconception → Locate supporting sentences in C → Draft question, before producing R. Wei et al. (2022) establish that Chain-of-Thought prompting reliably elicits reasoning across arithmetic, commonsense, and symbolic tasks; we test whether the same approach improves retrieval-grounded Socratic generation in our educational RAG setting.
 
 **The goal of Phase 3** is to determine whether SocraticRAG is solvable through prompt engineering alone, or whether it exposes architectural limitations that require retrieval-aware training, a question that existing Socratic benchmarks, operating in open-domain settings, cannot answer.
 
@@ -162,7 +162,7 @@ An NLP benchmark is only credible if its automated metrics correlate reliably wi
 
 **Method.** We sample 500 generated interactions from the baseline models. Three expert educators, blind to which model produced each response, rate each on two dimensions: Faithfulness (is the question derived from C?) and Socratic Adherence (does the question guide without revealing?) using a Likert scale (1–5).
 
-**Statistical Validation.** We calculate Cohen's Kappa (κ) for inter-rater reliability among the three human annotators. Discerning Minds (Liu et al., 2025\) reports agreement ratios of 89–97% between LLM-based and human scoring across their pedagogical metrics, suggesting that well-designed LLM judges can serve as reliable proxies. We then calculate Spearman's ρ between human scores and our automated three-axis pipeline. Following EULER's validation methodology (Bonino et al., 2024), which achieved Pearson p = 0.78 between GPT-4o and human judgments on Socratic quality, we set a target of ρ \> 0.7 as the threshold for confirming that SocraticRAG's automated metrics can reliably substitute for expensive human evaluation in future work.
+**Statistical Validation.** We calculate Cohen's Kappa (κ) for inter-rater reliability among the three human annotators. Discerning Minds (Liu et al., 2025\) reports agreement ratios of 89–97% between LLM-based and human scoring across their pedagogical metrics, suggesting that well-designed LLM judges can serve as reliable proxies. We then calculate Spearman's ρ between human scores and our automated three-axis pipeline. Following EULER's validation methodology (Bonino et al., 2024), which achieved Pearson r = 0.78 (reported as p = 0.78, non-standard notation) between GPT-4o and human judgments on Socratic quality, we set a target of ρ \> 0.7 as the threshold for confirming that SocraticRAG's automated metrics can reliably substitute for expensive human evaluation in future work.
 
 **Success Criteria.** If the correlation is strong, SocraticRAG becomes a reusable, fully automated benchmark that future researchers can run without human annotation, directly addressing the scalability limitation identified by Macina et al. (2025), who note that human pedagogical evaluation "is expensive" and "can only create a snapshot of current performance."
 
@@ -170,7 +170,7 @@ An NLP benchmark is only credible if its automated metrics correlate reliably wi
 
 * **It contributes a reusable resource.** NLP researchers value datasets. SocraticRAG would become the standard benchmark used when researchers want to prove their new fine-tuned educational LLM handles retrieval-constrained Socratic tutoring better than GPT-4o. MathTutorBench (Macina et al., 2025\) already demonstrates that EMNLP accepts and values holistic pedagogical benchmarks as oral papers, SocraticRAG fills the retrieval-faithful gap that MathTutorBench explicitly acknowledges it does not cover.
 
-* **It is highly topical.** Hallucination mitigation in RAG and LLM alignment for education are two of the most heavily funded research areas in NLP right now. Ilkou et al. (2024) call directly for hybrid benchmarks combining RAG and pedagogical evaluation. Lefton et al. (2025) propose Socratic RAG systems without evaluating them. SocraticRAG is the evaluation infrastructure both lines of work are missing.
+* **It is highly topical.** Hallucination mitigation in RAG and LLM alignment for education are two of the most heavily funded research areas in NLP right now. Ilkou et al. (2024) call directly for hybrid benchmarks combining RAG and pedagogical evaluation. Lefton et al. (2025) build a Socratic RAG system for information retrieval contexts without evaluating faithfulness. SocraticRAG is the evaluation infrastructure both lines of work are missing.
 
 * **It leverages existing work.** The OCR and semantic chunking pipeline from SynapsEd provides the corpus backbone. The Socratic prompting strategies already developed provide the zero-shot baseline. The student misconception simulation follows a validated pipeline from SocraticLM (Liu et al., 2024). The evaluation rubric is adapted from EULER (Bonino et al., 2024\) and Discerning Minds (Liu et al., 2025). Nothing is built from scratch, everything is a principled extension of verified prior work.
 
@@ -200,7 +200,7 @@ Defines the dominant RAG faithfulness framework. Its claim-decomposition mechani
 
 **2\. Bonino, G., Sanmartino, G., Pinheiro, G.G., Papotti, P., Troncy, R., & Michiardi, P. (2024), EULER** | AIxEDU @ AIxIA 2024
 
-Fine-tunes LLMs for Socratic interactions using DPO. Provides the validated LLM-as-a-judge rubric for Socratic quality, including the "reveal\_answer" binary criterion, confirmed at Pearson p = 0.78 against human judgment. Empirically shows topic drift in multi-turn Socratic dialogues.
+Fine-tunes LLMs for Socratic interactions using DPO. Provides the validated LLM-as-a-judge rubric for Socratic quality, including the "reveal\_answer" binary criterion, confirmed at Pearson r = 0.78 (reported as p = 0.78 in the original paper, non-standard notation) against human judgment. Empirically shows topic drift in multi-turn Socratic dialogues.
 
 →[https://scholar.google.com/scholar?hl=en\&as\_sdt=0%2C5\&q=EULER%3A+Fine+Tuning+a+Large+Language+Model+for+Socratic+Interactions\&btnG=](https://scholar.google.com/scholar?hl=en&as_sdt=0%2C5&q=EULER%3A+Fine+Tuning+a+Large+Language+Model+for+Socratic+Interactions&btnG=) 
 
@@ -226,7 +226,7 @@ This paper does not use RAG but rather introduces a proxy LLM format with Knowle
 
 **6\. Lefton, L. et al. (2025), A Socratic RAG Approach** | AAAI 2025
 
-Proposes combining RAG pipelines with Socratic dialogue for research topic disambiguation. Builds a Socratic RAG system but includes zero evaluation of whether the Socratic outputs stay faithful to the retrieved material, directly demonstrating the gap SocraticRAG fills.
+Demonstrates a Socratic RAG system for academic knowledge organization system (KOS) disambiguation—a library taxonomy information retrieval task, not educational tutoring. Includes zero evaluation of whether the Socratic outputs stay faithful to the retrieved material, confirming the systemic absence of faithfulness evaluation even outside educational settings.
 
 → [https://arxiv.org/abs/2502.15005](https://arxiv.org/abs/2502.15005)
 
@@ -236,10 +236,10 @@ Proposes GuideEval, a benchmark evaluating Socratic LLMs through a three-phase f
 
 → [https://arxiv.org/abs/2508.06583](https://arxiv.org/abs/2508.06583)
 
-**8\. Hu, W. et al. (2025), Socratic Questioning: Learn to Self-guide Multimodal Reasoning in the Wild** | arXiv 2025
+**8\. Wei, J. et al. (2022), Chain-of-Thought Prompting Elicits Reasoning in Large Language Models** | NeurIPS 2022
 
-Demonstrates that structuring reasoning as iterative Socratic self-questioning, integrated with Chain-of-Thought, reduces hallucinations by 31.2% in multimodal reasoning tasks. Motivates the CoT prompting paradigm tested in Phase 3, with the caveat that results are from visual MLLM settings and we test whether the principle transfers to text-based educational RAG.
+Establishes Chain-of-Thought prompting as a reliable technique for eliciting reasoning across arithmetic, commonsense, and symbolic tasks. Provides the canonical motivation for the CoT prompting paradigm tested in Phase 3.
 
-→ [https://arxiv.org/abs/2501.02964](https://arxiv.org/abs/2501.02964)
+→ [https://arxiv.org/abs/2201.11903](https://arxiv.org/abs/2201.11903)
 
 *SocraticRAG Research Proposal, For Internal Review*  
