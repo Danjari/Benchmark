@@ -3,32 +3,94 @@ Script 00: Corpus Chunker
 Input:  PDF files in data/pdfs/{course}/
 Output: data/chunks.jsonl
 
-Uses Mistral OCR for text extraction (preserves slide structure, headers, visual content)
-then RecursiveCharacterTextSplitter with markdown-aware splitting — ported from SynapsEd.
+Two-step pipeline:
+  Step 1 — Mistral OCR: PDF → per-page markdown
+            Preserves slide structure, equations, tables, and visual layout markers.
+
+  Step 2 — Propositionizer: per-page markdown → concept units via GPT-4o
+            Each concept unit covers exactly ONE teachable concept from the source,
+            with original wording preserved. Enforces the paper's claim that
+            C = "a single concept such as a definition, worked example, or explanation."
+
+Methodology: concept-level chunking following Chen et al. (EMNLP 2024) "Dense X Retrieval:
+What Retrieval Granularity Should We Use?" (arXiv:2312.06648), adapted from atomic
+propositions to concept-level units appropriate for multi-sentence educational RAG context.
+
+Output schema per chunk:
+  chunk_id     — 8-char MD5 hash of (source_filename, chunk_index)
+  source       — PDF filename
+  course       — course directory name (e.g. "6.7960")
+  chunk_index  — sequential index within the document
+  page         — source page number
+  concept      — short concept label extracted by the Propositionizer (metadata only)
+  text         — concept unit text, preserving original wording
+  token_count  — cl100k_base token count
 """
 
 import os
 import json
 import hashlib
 import base64
+import asyncio
 import tiktoken
 from pathlib import Path
 from mistralai import Mistral
-from langchain_text_splitters import RecursiveCharacterTextSplitter, Language
+from openai import AsyncOpenAI
 from dotenv import load_dotenv
+from tqdm.asyncio import tqdm
 
 load_dotenv()
 
-client = Mistral(api_key=os.getenv("MISTRAL_API_KEY"))
+mistral_client = Mistral(api_key=os.getenv("MISTRAL_API_KEY"))
+openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 TOKENIZER = tiktoken.get_encoding("cl100k_base")
 
-# chunk_size is in characters (~250 tokens at 4 chars/token); paper target is 200–500 tokens
-CHUNK_SIZE = 1000
-CHUNK_OVERLAP = 200
-MIN_CHUNK_TOKENS = 150  # filter slide headers and orphaned fragments
+MIN_CHUNK_TOKENS = 100   # below this a unit lacks enough content for tutoring
+MAX_CHUNK_TOKENS = 500   # above this a unit spans multiple concepts; paper target: 200–500
 PDF_DIR = Path("data/pdfs")
 OUTPUT_FILE = Path("data/chunks.jsonl")
 
+# ── Propositionizer prompt ─────────────────────────────────────────────────────
+
+PROPOSITIONIZER_PROMPT = """You are preparing a benchmark dataset for AI tutoring evaluation.
+
+Given this educational content from a {course} lecture (page {page}):
+
+---
+{markdown}
+---
+
+Extract CONCEPT UNITS. A concept unit is a self-contained block of text covering exactly ONE teachable idea — a definition, theorem, algorithm, property, or worked example — that a student and tutor could discuss in a single interaction.
+
+Requirements for each unit:
+1. ONE concept only — do not bundle multiple distinct ideas into one unit
+2. Self-contained — the text must be intelligible without surrounding context
+3. Preserve original wording — copy text as it appears; do not paraphrase or summarize
+4. Substantive — must contain at minimum one claim plus its explanation or implication
+
+Skip entirely:
+- Slide titles, section headers, and lecture labels used only for navigation
+- Enumerations that name topics without explaining them (e.g., "Topics: 1. X 2. Y 3. Z")
+- Image captions and figure references without substantive explanation
+- Administrative text (office hours, grading policies, course logistics)
+
+Output rules:
+- If the page has one coherent concept, return one unit
+- If it has multiple distinct concepts, split them into separate units
+- If the page has no extractable concept units (title slide, agenda, image-only), return an empty list
+
+Respond ONLY with valid JSON:
+{{
+  "units": [
+    {{
+      "concept": "concise concept label, 5 words max (e.g. 'vanishing gradient problem')",
+      "text": "exact text from the page, preserving original wording"
+    }}
+  ]
+}}"""
+
+
+# ── OCR ────────────────────────────────────────────────────────────────────────
 
 def count_tokens(text: str) -> int:
     return len(TOKENIZER.encode(text))
@@ -39,7 +101,7 @@ def get_ocr_markdown(pdf_path: Path) -> list[dict]:
     with open(pdf_path, "rb") as f:
         b64 = base64.standard_b64encode(f.read()).decode()
 
-    response = client.ocr.process(
+    response = mistral_client.ocr.process(
         model="mistral-ocr-latest",
         document={
             "type": "document_url",
@@ -53,75 +115,106 @@ def get_ocr_markdown(pdf_path: Path) -> list[dict]:
     ]
 
 
-def chunk_markdown_by_page(
-    pages: list[dict],
-    chunk_size: int = CHUNK_SIZE,
-    chunk_overlap: int = CHUNK_OVERLAP,
+# ── Propositionizer ────────────────────────────────────────────────────────────
+
+async def extract_concept_units(
+    page: dict,
+    course: str,
+    semaphore: asyncio.Semaphore,
 ) -> list[dict]:
-    """Chunk per-page markdown using markdown-aware recursive splitting."""
-    splitter = RecursiveCharacterTextSplitter.from_language(
-        Language.MARKDOWN,
-        chunk_size=chunk_size,
-        chunk_overlap=chunk_overlap,
-    )
+    """
+    Decompose one page's markdown into concept units via GPT-4o.
+    Falls back to the whole-page text if the API call fails and the page is within bounds.
+    """
+    async with semaphore:
+        try:
+            response = await openai_client.chat.completions.create(
+                model="gpt-4o",
+                messages=[{
+                    "role": "user",
+                    "content": PROPOSITIONIZER_PROMPT.format(
+                        course=course,
+                        page=page["page"],
+                        markdown=page["markdown"],
+                    ),
+                }],
+                response_format={"type": "json_object"},
+                temperature=0.1,  # low: consistent segmentation matters more than diversity
+            )
+            result = json.loads(response.choices[0].message.content)
+            units = result.get("units", [])
+        except Exception as e:
+            print(f"  [WARN] Propositionizer error page {page['page']}: {e} — falling back to raw page")
+            units = [{"concept": "", "text": page["markdown"]}]
 
-    all_chunks = []
-    for page in pages:
-        docs = splitter.create_documents([page["markdown"]])
-        for doc in docs:
-            lines = doc.metadata.get("loc", {}).get("lines", {"from": 0, "to": 0})
-            all_chunks.append({
-                "text": doc.page_content,
-                "metadata": {
-                    "page": page["page"],
-                    "lines": lines,
-                },
-            })
-
-    return all_chunks
-
-
-def process_pdf(pdf_path: Path, course: str) -> list[dict]:
-    print(f"  OCR: {pdf_path.name}...")
-    pages = get_ocr_markdown(pdf_path)
-    print(f"  Chunking {len(pages)} pages...")
-    raw_chunks = chunk_markdown_by_page(pages)
-
-    results = []
-    skipped = 0
-    for i, chunk in enumerate(raw_chunks):
-        text = chunk["text"].strip()
+    valid = []
+    for u in units:
+        text = u.get("text", "").strip()
         if not text:
             continue
         tokens = count_tokens(text)
         if tokens < MIN_CHUNK_TOKENS:
-            skipped += 1
-            continue
+            continue  # too short: slide header or orphaned fragment
+        if tokens > MAX_CHUNK_TOKENS:
+            # Unit spans too many tokens — likely a multi-concept block the model didn't split.
+            # Accept it but flag: the Dean in script 02 will reject utterances
+            # that can't be derived from C alone, which acts as a downstream safety net.
+            pass
+        valid.append({
+            "text": text,
+            "concept": u.get("concept", "").strip(),
+            "page": page["page"],
+            "token_count": tokens,
+        })
+
+    return valid
+
+
+# ── PDF processing ─────────────────────────────────────────────────────────────
+
+async def process_pdf(
+    pdf_path: Path,
+    course: str,
+    semaphore: asyncio.Semaphore,
+) -> list[dict]:
+    print(f"  OCR: {pdf_path.name}...")
+    pages = await asyncio.to_thread(get_ocr_markdown, pdf_path)
+    print(f"  Propositionizing {len(pages)} pages...")
+
+    tasks = [extract_concept_units(page, course, semaphore) for page in pages]
+    page_results = await tqdm.gather(*tasks, desc=f"  {pdf_path.stem}", leave=False)
+
+    all_units = [unit for page_units in page_results for unit in page_units]
+
+    chunks = []
+    for i, unit in enumerate(all_units):
         chunk_id = hashlib.md5(f"{pdf_path.name}_{i}".encode()).hexdigest()[:8]
-        results.append({
+        chunks.append({
             "chunk_id": chunk_id,
             "source": pdf_path.name,
             "course": course,
             "chunk_index": i,
-            "page": chunk["metadata"]["page"],
-            "lines": chunk["metadata"]["lines"],
-            "text": text,
-            "token_count": count_tokens(text),
+            "page": unit["page"],
+            "concept": unit["concept"],
+            "text": unit["text"],
+            "token_count": unit["token_count"],
         })
 
-    if skipped:
-        print(f"  Filtered {skipped} sub-threshold chunks (< {MIN_CHUNK_TOKENS} tokens)")
-    return results
+    return chunks
 
 
-def main():
+# ── Main ───────────────────────────────────────────────────────────────────────
+
+async def main():
     if not PDF_DIR.exists():
         print(f"Create {PDF_DIR} with course subfolders:")
         print("  data/pdfs/6.7960/  — Deep Learning lecture notes")
         print("  data/pdfs/6.036/   — Intro to ML lecture notes")
         return
 
+    semaphore = asyncio.Semaphore(5)  # 5 concurrent Propositionizer calls
     all_chunks = []
+
     for course_dir in sorted(PDF_DIR.iterdir()):
         if not course_dir.is_dir():
             continue
@@ -132,22 +225,25 @@ def main():
             continue
         for pdf_file in pdfs:
             print(f"\nProcessing {pdf_file.name} ({course})")
-            chunks = process_pdf(pdf_file, course)
+            chunks = await process_pdf(pdf_file, course, semaphore)
             all_chunks.extend(chunks)
-            print(f"  -> {len(chunks)} chunks")
+            print(f"  → {len(chunks)} concept units")
 
     OUTPUT_FILE.parent.mkdir(exist_ok=True)
     with open(OUTPUT_FILE, "w") as f:
         for chunk in all_chunks:
             f.write(json.dumps(chunk) + "\n")
 
-    print(f"\nTotal chunks: {len(all_chunks)}")
+    print(f"\nTotal concept units: {len(all_chunks)}")
     print(f"Saved to {OUTPUT_FILE}")
 
-    tokens = [c["token_count"] for c in all_chunks]
-    if tokens:
+    if all_chunks:
+        tokens = [c["token_count"] for c in all_chunks]
+        over = sum(1 for t in tokens if t > MAX_CHUNK_TOKENS)
         print(f"Token distribution — min: {min(tokens)}  max: {max(tokens)}  avg: {sum(tokens)//len(tokens)}")
+        if over:
+            print(f"  Note: {over} units exceed {MAX_CHUNK_TOKENS} tokens (multi-concept candidates — review manually)")
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

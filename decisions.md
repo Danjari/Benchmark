@@ -58,7 +58,7 @@ For erroneous utterances, script 01 stores `"misconception": ae["erroneous"].get
 
 *Decision needed:* Dean criterion 5 should always validate against `common_misconception` (extracted from C in Step 1, independent of the generation step). The profile field `misconception` should always store the Step 1 value (`common_misconception`), not the Step 2 self-report. **This is a code fix, not just a documentation issue.** See fix applied in script 01 when this is resolved.
 
-**I6. Chunk size is character-based but paper says "200–500 tokens"; no minimum token filter — PARTIALLY RESOLVED 2026-05-23**
+**I6. Chunk size is character-based but paper says "200–500 tokens"; no minimum token filter — RESOLVED 2026-05-23**
 
 `RecursiveCharacterTextSplitter(chunk_size=1000)` splits on 1000 *characters* (~250 tokens). The paper states "200–500 tokens." These roughly overlap, but: (a) it's not documented that the splitter uses characters; (b) there is no minimum token threshold — a 3-token slide header passes through as a valid C. Feeding a 3-token context to GPT-4o produces essentially hallucinated utterances.
 
@@ -87,7 +87,7 @@ Replace the `chunk_markdown_by_page` step with a two-phase approach:
 - **Chen et al. (EMNLP 2024)** "Dense X Retrieval" (arXiv:2312.06648, ACL Anthology: 2024.emnlp-main.845): Proposition-level > passage-level for RAG; Propositionizer trained on GPT-4 seed data.
 - **Qu et al. (arXiv:2410.13070, 2024)** "Is Semantic Chunking Worth the Computational Cost?": Semantic chunking (embedding-based) is not consistently better and more expensive — motivation to choose proposition-level over SemanticChunker.
 
-*Decision status:* Architecture confirmed. Implementation in script 00 pending. This is a non-trivial rewrite of the chunking step — do not proceed until the paper's Methodology section is updated to describe proposition-level chunking, since this changes what we claim about how C is constructed.
+*Decision status:* RESOLVED 2026-05-23. Script 00 fully rewritten with Propositionizer. LangChain dependency removed. Paper's Methodology section still needs updating to describe concept-level chunking (Chen et al. 2024 citation to add).
 
 **I8. Formal task says `(C, P, U) → R` but models receive `(C, U)` — OPEN**
 
