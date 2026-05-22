@@ -4,7 +4,12 @@ Input:  data/utterances.jsonl
 Output: data/responses.jsonl
 
 Runs each (C, U) pair through 3 models with a Socratic tutor system prompt.
-Models: GPT-4o, Claude Sonnet 4.6, Gemini 1.5 Pro
+Models: GPT-4o, Claude Sonnet 4.6, Gemini 2.0 Flash
+
+Ecological validity note: models receive only (C, U) — not P. Student Profile P
+is annotation metadata serving as Metric 3 ground truth. A deployed tutoring
+system would not have access to a labelled ground-truth profile; passing P would
+give an unrealistic advantage and conflate annotation with model capability.
 
 Cross-judge protocol (Zheng et al., 2024):
   - Claude judges GPT-4o outputs (in metric scripts)
@@ -51,7 +56,7 @@ Respond with a single Socratic guiding question."""
 MODELS = {
     "gpt-4o": "openai",
     "claude-sonnet-4-6": "anthropic",
-    "gemini-1.5-pro": "gemini",
+    "gemini-2.0-flash": "gemini",
 }
 
 
@@ -83,7 +88,7 @@ async def call_anthropic(chunk_text: str, utterance: str, semaphore: asyncio.Sem
 async def call_gemini(chunk_text: str, utterance: str, semaphore: asyncio.Semaphore) -> str:
     async with semaphore:
         model = genai.GenerativeModel(
-            model_name="gemini-1.5-pro",
+            model_name="gemini-2.0-flash",
             system_instruction=SOCRATIC_SYSTEM_PROMPT.format(chunk_text=chunk_text),
         )
         response = await asyncio.to_thread(
@@ -98,7 +103,7 @@ async def evaluate_utterance(u: dict, semaphore: asyncio.Semaphore) -> list[dict
     calls = {
         "gpt-4o": call_openai(u["chunk_text"], u["utterance"], semaphore),
         "claude-sonnet-4-6": call_anthropic(u["chunk_text"], u["utterance"], semaphore),
-        "gemini-1.5-pro": call_gemini(u["chunk_text"], u["utterance"], semaphore),
+        "gemini-2.0-flash": call_gemini(u["chunk_text"], u["utterance"], semaphore),
     }
     results = await asyncio.gather(*calls.values(), return_exceptions=True)
     for model, result in zip(calls.keys(), results):
@@ -111,9 +116,8 @@ async def evaluate_utterance(u: dict, semaphore: asyncio.Semaphore) -> list[dict
             "chunk_id": u["chunk_id"],
             "chunk_text": u["chunk_text"],
             "course": u["course"],
-            "state": u["state"],
+            "profile": u["profile"],
             "utterance": u["utterance"],
-            "target_concept": u["target_concept"],
             "model": model,
             "response": result,
         })

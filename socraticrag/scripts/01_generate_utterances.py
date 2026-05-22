@@ -202,7 +202,10 @@ async def generate_for_chunk(chunk: dict, semaphore: asyncio.Semaphore) -> list[
                 "cognitive_state": "erroneous",
                 "target_concept": target_concept,
                 "correct_understanding": correct_understanding,
-                "misconception": ae["erroneous"].get("misconception_expressed", common_misconception),
+                # Ground truth: always the C-derived misconception from Step 1 (Dean validates against this)
+                # misconception_expressed is stored separately for analysis only
+                "misconception": common_misconception,
+                "misconception_expressed": ae["erroneous"].get("misconception_expressed", ""),
             },
             "utterance": ae["erroneous"]["utterance"],
             "dean_validated": False,

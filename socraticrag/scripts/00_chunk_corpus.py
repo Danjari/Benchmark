@@ -22,8 +22,10 @@ load_dotenv()
 client = Mistral(api_key=os.getenv("MISTRAL_API_KEY"))
 TOKENIZER = tiktoken.get_encoding("cl100k_base")
 
+# chunk_size is in characters (~250 tokens at 4 chars/token); paper target is 200–500 tokens
 CHUNK_SIZE = 1000
 CHUNK_OVERLAP = 200
+MIN_CHUNK_TOKENS = 150  # filter slide headers and orphaned fragments
 PDF_DIR = Path("data/pdfs")
 OUTPUT_FILE = Path("data/chunks.jsonl")
 
@@ -86,9 +88,14 @@ def process_pdf(pdf_path: Path, course: str) -> list[dict]:
     raw_chunks = chunk_markdown_by_page(pages)
 
     results = []
+    skipped = 0
     for i, chunk in enumerate(raw_chunks):
         text = chunk["text"].strip()
         if not text:
+            continue
+        tokens = count_tokens(text)
+        if tokens < MIN_CHUNK_TOKENS:
+            skipped += 1
             continue
         chunk_id = hashlib.md5(f"{pdf_path.name}_{i}".encode()).hexdigest()[:8]
         results.append({
@@ -102,6 +109,8 @@ def process_pdf(pdf_path: Path, course: str) -> list[dict]:
             "token_count": count_tokens(text),
         })
 
+    if skipped:
+        print(f"  Filtered {skipped} sub-threshold chunks (< {MIN_CHUNK_TOKENS} tokens)")
     return results
 
 
