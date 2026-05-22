@@ -5,7 +5,7 @@
   "activeVersion": "v1",
   "anonId": "1b245f9e-5221-476f-aaaf-004912458101",
   "createdAt": "2026-05-11T08:22:22Z",
-  "lastTwinUpdate": "2026-05-11",
+  "lastTwinUpdate": "2026-05-23",
   "files": {
     "twin": "osis/twin.md",
     "inbox": ["osis/inbox/2026-05-11--socraticrag-benchmark-paper.md"],
@@ -20,7 +20,8 @@
               "brief": "osis/v1/core/iteration-1--proposal-finalization/brief.md",
               "signals": [
                 "osis/v1/core/iteration-1--proposal-finalization/signals/2026-05-11--professor-session.md",
-                "osis/v1/core/iteration-1--proposal-finalization/signals/2026-05-22--pipeline-methodology-note.md"
+                "osis/v1/core/iteration-1--proposal-finalization/signals/2026-05-22--pipeline-methodology-note.md",
+                "osis/v1/core/iteration-1--proposal-finalization/signals/2026-05-23--build-phase-audit.md"
               ]
             }
           }

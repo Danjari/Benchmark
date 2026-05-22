@@ -11,7 +11,7 @@ A benchmark dataset and evaluation framework for measuring whether LLMs can gene
 ## The Core Artifact
 
 **Edu-QA-Socratic**: a dataset of (C, P, U, R*) tuples where:
-- C = a semantically coherent chunk (200-500 tokens) from a university course document, representing a single concept (definition, example, or explanation). C is the model's sole permitted knowledge source.
+- C = a concept unit (100–500 tokens) from a university course document, representing exactly one teachable concept (definition, example, or explanation), produced by the Propositionizer step (GPT-4o segmentation following Chen et al. EMNLP 2024). C is the model's sole permitted knowledge source.
 - P = a student profile encoding one of four cognitive states: accurate, erroneous, comprehension, confusion (from Discerning Minds, Liu et al. 2025)
 - U = a student utterance expressing that state
 - R* = the Golden Socratic Response: the best Socratic question for that (C, P, U) triple, selected and lightly revised from LLM-generated candidates by expert educators, with supporting sentences in C explicitly highlighted
@@ -34,7 +34,7 @@ Three automated metrics, each using LLM-as-a-Judge:
 - Metric 2: Novel two-step NLI mechanism: (1) LLM extracts declarative presuppositions from the Socratic question, (2) entailment check against C. Adapted from FActScore (Min et al., 2023) for interrogative outputs.
 - Metric 3: GuideEval three-phase rubric (Perception, Orchestration, Elicitation) from Discerning Minds, with Elicitation scored on Bloom's taxonomy E-Levels 1/2/3.
 
-Self-enhancement bias mitigation: cross-judge protocol (Claude judges GPT-4o outputs, GPT-4o judges Claude outputs).
+Self-enhancement bias mitigation: cross-judge protocol applied at both stages — construction (GPT-4o generates utterances, Claude validates as Dean) and evaluation (Claude judges GPT-4o model outputs, GPT-4o judges Claude outputs). Motivated by Zheng et al. (2024), Du et al. (ICML 2024), Chan et al. (ICLR 2024).
 
 ## What Makes It New
 
@@ -53,4 +53,5 @@ Self-enhancement bias mitigation: cross-judge protocol (Claude judges GPT-4o out
 
 ## Sessions
 
+- 2026-05-23 — Updated C definition (concept unit via Propositionizer), cross-judge extended to construction stage · `claude -r 242d2edc-a547-4cdb-a480-4616a9850466`
 - 2026-05-11 — Initial product definition: Edu-QA-Socratic artifact, DTS + 4-state combination, three-metric evaluation framework · `claude -r 127ec0b2-7994-4530-bcae-3fbf88969adc`

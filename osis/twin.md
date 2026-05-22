@@ -19,8 +19,8 @@ Additional supporting evidence for the gap: MathTutorBench evaluates its own Soc
 
 ### Phase 1 — Task Definition & Dataset Construction (Edu-QA-Socratic)
 
-**Input format:** (C, P, U) → R
-- C = pedagogical context chunk from university course materials (MIT OpenCourseWare CC BY-NC-SA 4.0 and LibreTexts; extracted via our own OCR and semantic chunking pipeline)
+**Input format:** (C, P, U) → R — models receive (C, U); P is annotation metadata for Metric 3
+- C = a concept unit from university course materials (MIT OpenCourseWare CC BY-NC-SA 4.0 and LibreTexts; extracted via Mistral OCR + GPT-4o Propositionizer — one teachable concept per chunk, following Chen et al. EMNLP 2024)
 - P = student profile encoding one of four cognitive states: accurate, erroneous, comprehension, confusion (taxonomy from Discerning Minds / Liu et al. 2025)
 - U = student utterance expressing that state
 - R = model-generated Socratic guiding question
@@ -30,7 +30,7 @@ Additional supporting evidence for the gap: MathTutorBench evaluates its own Soc
 **Data pipeline (Silver-to-Gold — Option C hybrid):**
 1. Corpus collection — OCR + semantic chunking of lecture slide PDFs from MIT OpenCourseWare (CC BY-NC-SA 4.0) and LibreTexts; our own pipeline (not SynapsEd, not Andrew Ng materials)
 2. Student profile construction — 4 cognitive states per chunk, contrastive pairs (erroneous vs. accurate under identical context), following Discerning Minds taxonomy
-3. Seed generation — Dean-Teacher-Student multi-agent pipeline (from SocraticLM) generates candidate misconceptions and utterances; Dean agent filters implausible ones using three domain-agnostic criteria plus a fourth RAG-specific criterion: the question draws only on concepts present in chunk C (making the Dean the retrieval-faithfulness gatekeeper)
+3. Seed generation — GPT-4o generates candidate utterances (two-step: concept extraction → contrastive pair generation); Claude Dean validates each (P, U) pair using 4–5 criteria; cross-judge protocol (GPT-4o generates, Claude validates) prevents self-enhancement bias at construction time (Du et al. ICML 2024, Chan et al. ICLR 2024)
 4. Expert annotation — LLM generates candidates; expert educators review each scenario and select or lightly revise the best candidate as the Golden Socratic Response (R₀ₙₑˣ), with explicit supporting-sentence highlights in C (silver-to-gold; validated practice from MathTutorBench)
 
 **Target dataset scale:** 50–100 document chunks across 5–10 courses and 3–4 subject domains; 4 cognitive states per chunk = 200–400 annotated scenarios; 1–2 utterances per scenario = 400–800 total benchmark items.
@@ -91,32 +91,46 @@ Additional supporting evidence for the gap: MathTutorBench evaluates its own Soc
 | Lefton et al. 2025 | Socratic RAG system for academic KOS disambiguation (library taxonomy IR — not educational tutoring); zero faithfulness evaluation — confirms gap is systemic |
 | Wei et al. 2022 (NeurIPS) | Canonical CoT paper — motivates CoT prompting paradigm in Phase 3 |
 | FActScore (Min et al. 2023, EMNLP) | Methodological ancestor of Metric 2 (atomic decomposition + entailment) |
-| MT-Bench (Zheng et al. 2024) | Self-enhancement bias documentation — motivates cross-judge protocol |
+| MT-Bench (Zheng et al. 2024) | Self-enhancement bias documentation — motivates cross-judge protocol at evaluation and construction |
+| Dense X Retrieval (Chen et al. EMNLP 2024) | Proposition-level chunking basis — each chunk = one atomic concept; outperforms passage-level chunking in RAG |
+| Multiagent Debate (Du et al. ICML 2024) | Cross-model critique catches errors self-evaluation misses — motivates GPT-4o-generates / Claude-validates at construction |
+| ChatEval (Chan et al. ICLR 2024) | Multi-agent referee team > single-agent evaluation — supports cross-model Dean design |
+| Self-Refine (Madaan et al. NeurIPS 2023) | Same-model self-feedback is blind to own systematic biases — contrasted to justify cross-model validation |
 | MIT OpenCourseWare + LibreTexts | Corpus source (CC BY-NC-SA 4.0 and CC-licensed respectively) |
 
 ## Current State
 
-All 16 open decisions from decisions.md v1.0 are resolved (v1.1, closed 2026-05-11). All primary papers fully verified via complete PDF read (RAGAS, EULER, SocraticLM, MathTutorBench, Discerning Minds, Ilkou, Lefton). Target venue is EMNLP 2026. Two professors confirmed as collaborators/co-authors. No implementation exists. The corpus, annotation pipeline, and automated evaluation framework are described and methodology-locked but not yet built. The primary artifact is `benchmark paper.md`.
+**Build phase active as of 2026-05-23.** Scripts 00–03 implemented and pipeline-ready. Target venue is EMNLP 2026 (deadline May 25, 2026). Two professors confirmed as collaborators/co-authors. The primary prose artifact is `benchmark paper.md`; the primary code artifact is `socraticrag/scripts/`.
 
-**Methodology locked as of 2026-05-11:**
-- Corpus: MIT OCW + LibreTexts (CC-licensed), our own OCR + chunking pipeline
+**What is built:**
+- Script 00: Two-step corpus ingestion (Mistral OCR → GPT-4o Propositionizer). Outputs `data/chunks.jsonl` where each chunk is one concept unit.
+- Script 01: Contrastive utterance generation (GPT-4o). Two-step: concept extraction from C → contrastive pair generation. Outputs `data/utterances_raw.jsonl`.
+- Script 02: Dean validation (Claude — cross-judge). Validates (P, U) pairs against 4–5 criteria; checks contrastive pair integrity for all four states; saves accepted (`utterances.jsonl`) and rejected (`utterances_rejected.jsonl`) with per-state acceptance rates.
+- Script 03: Model evaluation (GPT-4o, Claude, Gemini 2.0 Flash). Models receive (C, U) only; P propagated in output for downstream metric scripts.
+
+**What is not yet built:** Scripts 04–08 (Metric 1, Metric 2, Metric 3, RAGAS baseline, analysis). Gold annotation pipeline. README.
+
+**Methodology locked (updated 2026-05-23):**
+- Corpus: MIT OCW + LibreTexts (CC-licensed); concept-level chunking via Propositionizer (Chen et al., EMNLP 2024)
+- Cross-judge: GPT-4o generates → Claude validates (construction); Claude judges GPT-4o outputs and vice versa (evaluation)
+- P = annotation metadata for Metric 3; evaluated models receive (C, U) only
 - Silver-to-gold: Option C hybrid (LLM generates, educators select/revise)
 - Specialized tutoring models: Qwen2.5-7B-SocraticLM + LearnLM (learnlm-1.5-pro-experimental)
-- CoT motivation: Wei et al. 2022
+- Evaluated models: GPT-4o, Claude Sonnet 4.6, Gemini 2.0 Flash (+ Llama, LearnLM, SocraticLM pending script 03 extension)
+- CoT motivation: Wei et al. 2022; cross-judge motivation: Zheng et al. 2024, Du et al. 2024, Chan et al. 2024
 - Formal notation: R ⊬ sol
-- Pearson citation: r = 0.78 (non-standard notation flagged)
-- MathTutorBench metric: "revealing-answer criterion within Scaffolding Score" (not "Leaked Solution %")
-- Lefton: KOS disambiguation (IR), not educational tutoring
-- Metric 2: two-step NLI (LLM presupposition extraction + entailment check)
-- Dean fourth criterion: draws only on concepts in C (retrieval-faithfulness gatekeeper)
-- Self-enhancement bias: cross-judge protocol
+- Metric 2: two-step NLI (presupposition extraction + entailment check), following FActScore (Min et al. 2023)
+- Dean: accept/reject gate with 4 criteria (5 for erroneous); cross-judge (Claude)
+
+**Open issues (decisions.md v1.3):** I3 (multi-domain corpus), I4 (more models in script 03), I8 (paper formal task notation — partial fix applied), I9 (80 scenarios claim — fixed to "up to 80"), I10 (gold annotation pipeline), I11 (temperature documentation), I12 (stochastic generation note), I13 (cross-page chunking for textbooks), I15 (ragas documentation), I16 (README).
 
 ## Topology
 
-Standalone research project. No software packages, no monorepo structure, no build system. One primary artifact: `benchmark paper.md`.
+Standalone research project. Primary artifacts: `benchmark paper.md` (methodology prose) and `socraticrag/` (implementation). No packages, no monorepo.
 
 ---
 
 ## Sessions
 
+- 2026-05-23 — Build phase begins: scripts 00–03 implemented; Propositionizer chunking redesign; cross-judge at construction; Dean switched to Claude; contrastive pair check extended; rejection log added; 16-issue audit logged in decisions.md v1.3; 6 resolved; benchmark paper and all osis docs updated · `claude -r 242d2edc-a547-4cdb-a480-4616a9850466`
 - 2026-05-11 — Updated twin to reflect corpus change (MIT OCW + LibreTexts), silver-to-gold pipeline, model list corrections (Qwen2.5-7B-SocraticLM, LearnLM confirmed), CoT citation fix (Wei et al. 2022), notation corrections, Lefton reframing, new BLEU gap argument, all decisions resolved · `claude -r 127ec0b2-7994-4530-bcae-3fbf88969adc`

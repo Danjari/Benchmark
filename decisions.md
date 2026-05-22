@@ -6,7 +6,7 @@ Each version entry documents what was surfaced on that date: issues flagged, dec
 
 ## Version 1.3 — 2026-05-23
 
-### STATUS: Open. Cross-script audit surfaced 16 issues. Issues I1–I4 are critical; I5–I10 require revision; I11–I16 are documentation and release gaps.
+### STATUS: Partially resolved 2026-05-23. Cross-script audit surfaced 16 issues. 6 resolved same session: I1 (cross-judge Dean), I2 (pair integrity check), I5 (circular misconception), I6 (token filter), I7 (Propositionizer chunking redesign), I14 (rejection log). 10 remain open: I3, I4, I8, I9, I10, I11, I12, I13, I15, I16.
 
 ---
 
@@ -16,7 +16,7 @@ Each version entry documents what was surfaced on that date: issues flagged, dec
 
 #### CRITICAL — Would trigger reviewer rejection
 
-**I1. Self-judge at dataset construction (scripts 01 + 02) — OPEN**
+**I1. Self-judge at dataset construction (scripts 01 + 02) — RESOLVED 2026-05-23**
 
 GPT-4o generates utterances (script 01) and validates them as the Dean (script 02). The paper explicitly cites Zheng et al. (2024) for self-enhancement bias and applies a cross-judge protocol at model evaluation time — but not at dataset construction. A reviewer familiar with Zheng et al. will ask immediately: why does the cross-judge logic apply to model outputs but not to the ground truth being constructed? If GPT-4o's Dean inflates acceptance of its own generations, the benchmark is contaminated before any model runs on it.
 

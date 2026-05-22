@@ -29,14 +29,26 @@ Deliver a professor-ready research proposal by May 25, 2026 (EMNLP 2026 submissi
 - The model list (Qwen2.5-7B-SocraticLM, LearnLM, GPT-4o, Claude, Llama)
 - The EMNLP 2026 target
 
-## Open Questions (Block the Build Phase)
+## Build Phase Status (as of 2026-05-23)
+
+Build phase has begun. Scripts 00–03 are implemented and pipeline-ready. Open implementation gaps (tracked in decisions.md v1.3):
+
+- **I3** — Multi-domain corpus: LibreTexts not yet integrated; currently MIT OCW ML only
+- **I4** — Model coverage in script 03: Llama, LearnLM, Qwen2.5-SocraticLM not yet implemented
+- **I10** — Gold annotation pipeline (scripts 04–08) not yet written
+- **I16** — No README in `socraticrag/`
+
+Paper fixes applied today: Propositionizer chunking description, cross-judge at construction, formal task (C,U) clarification, "up to 80" scenarios, Gemini 2.0 Flash, 4 new citations.
+
+## Open Questions (Still Blocking)
 
 - Himanshi's annotator count research — gate for Phase 4 design
-- Whether 4 cognitive states are sufficient or a custom taxonomy is needed
-- Specific MIT OCW course selection (Moudjahid to provide)
+- Specific MIT OCW course selection beyond 6.7960 and 6.036 (needed for multi-domain claim)
+- PDFs not yet downloaded — need to be placed in `data/pdfs/6.7960/` and `data/pdfs/6.036/`
 
 ---
 
 ## Sessions
 
+- 2026-05-23 — Build phase begins: scripts 00–03 implemented; Propositionizer, cross-judge Dean, rejection log, pair integrity check; 6 of 16 audit issues resolved; paper and all osis docs updated · `claude -r 242d2edc-a547-4cdb-a480-4616a9850466`
 - 2026-05-11 — Iteration 1 brief created: proposal finalization, 14-day window to EMNLP deadline, 3 paper fixes + 3 missing citations · `claude -r 127ec0b2-7994-4530-bcae-3fbf88969adc`
