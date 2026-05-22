@@ -30,6 +30,20 @@ In parallel, a growing body of NLP research has begun evaluating the Socratic ab
 
 The NLP community lacks a benchmark to evaluate what we call **Pedagogical Faithfulness**, the ability of an LLM to generate Socratic guidance that avoids giving the answer away AND stays strictly bounded by a retrieved educational document. RAG benchmarks assume declarative outputs and cannot evaluate guiding questions. Socratic benchmarks operate in open-domain settings with no retrieval constraints. MathTutorBench is the closest existing work, but it is math-only and entirely retrieval-free. **SocraticRAG fills this gap, and it is the first benchmark to evaluate both dimensions jointly in an educational RAG setting.**
 
+## **1.4  Contributions**
+
+We make the following contributions:
+
+1. **Task formulation.** We formally define Pedagogical Faithfulness as an NLP construct: the joint ability of an LLM to generate Socratic guidance that withholds the answer AND stays strictly bounded by a retrieved educational document. No existing benchmark defines or operationalizes this joint constraint. We provide a formal task specification: given (C, P, U), generate R such that R is a question, R ⊢ C, and R ⊬ sol.
+
+2. **A novel evaluation mechanism (Metric 2).** We adapt FActScore's (Min et al., 2023) atomic decomposition and entailment checking from declarative to interrogative text. Rather than decomposing statements into atomic facts, we extract the declarative presuppositions embedded in a Socratic question and verify each against the retrieved context C via NLI. This is the first adaptation of this mechanism to non-declarative pedagogical outputs, and the only automated faithfulness metric that does not break when the model output is a question.
+
+3. **A three-axis evaluation framework.** We propose three orthogonal metrics that jointly capture what no existing benchmark measures: Direct-Answer Leakage (Metric 1, adapted from EULER), Retrieval Faithfulness (Metric 2, novel), and Pedagogical Alignment (Metric 3, adapted from Discerning Minds). Each metric independently exposes a distinct failure mode. A model can fail any one while passing the other two, making SocraticRAG diagnostically useful rather than producing a single aggregate score.
+
+4. **A pilot benchmark dataset (Edu-QA-Socratic).** We construct and release 80 retrieval-constrained educational scenarios drawn from MIT OpenCourseWare (6.7960 Deep Learning, 6.036 Introduction to Machine Learning), covering four cognitive student states per document chunk, with gold Socratic responses validated by expert educators. Each scenario includes the source chunk C, a simulated student utterance U encoding a specific cognitive state, and the highlighted supporting sentences in C that anchor the gold response.
+
+5. **Empirical baseline results.** We evaluate GPT-4o, Claude Sonnet 4.6, and Gemini on Edu-QA-Socratic across all three metrics, demonstrating that joint-constraint performance degrades significantly compared to open-domain Socratic evaluation, and that RAGAS scores are undefined or trivially uninformative on the same model outputs.
+
 # 
 
 # **2\. How to Build the Benchmark (The Methodology)**
