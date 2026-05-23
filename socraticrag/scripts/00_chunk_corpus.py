@@ -28,6 +28,7 @@ Output schema per chunk:
 """
 
 import os
+import re
 import json
 import hashlib
 import base64
@@ -49,6 +50,7 @@ MIN_CHUNK_TOKENS = 100   # below this a unit lacks enough content for tutoring
 MAX_CHUNK_TOKENS = 500   # above this a unit spans multiple concepts; paper target: 200–500
 PDF_DIR = Path("data/pdfs")
 OUTPUT_FILE = Path("data/chunks.jsonl")
+CHECKPOINT_FILE = Path("data/.chunks_checkpoint.json")
 
 COURSE_NAMES = {
     "deeplearning":    "MIT 6.7960 Deep Learning (Fall 2024)",
@@ -127,30 +129,36 @@ async def extract_concept_units(
     course: str,
     semaphore: asyncio.Semaphore,
 ) -> list[dict]:
-    """
-    Decompose one page's markdown into concept units via GPT-4o.
-    Falls back to the whole-page text if the API call fails and the page is within bounds.
-    """
+    """Decompose one page's markdown into concept units via GPT-4o with retry on rate limits."""
     async with semaphore:
-        try:
-            response = await openai_client.chat.completions.create(
-                model="gpt-4o",
-                messages=[{
-                    "role": "user",
-                    "content": PROPOSITIONIZER_PROMPT.format(
-                        course=course,
-                        page=page["page"],
-                        markdown=page["markdown"],
-                    ),
-                }],
-                response_format={"type": "json_object"},
-                temperature=0.1,  # low: consistent segmentation matters more than diversity
-            )
-            result = json.loads(response.choices[0].message.content)
-            units = result.get("units", [])
-        except Exception as e:
-            print(f"  [WARN] Propositionizer error page {page['page']}: {e} — falling back to raw page")
-            units = [{"concept": "", "text": page["markdown"]}]
+        units = []
+        for attempt in range(5):
+            try:
+                response = await openai_client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[{
+                        "role": "user",
+                        "content": PROPOSITIONIZER_PROMPT.format(
+                            course=course,
+                            page=page["page"],
+                            markdown=page["markdown"],
+                        ),
+                    }],
+                    response_format={"type": "json_object"},
+                    temperature=0.1,
+                )
+                result = json.loads(response.choices[0].message.content)
+                units = result.get("units", [])
+                break
+            except Exception as e:
+                err = str(e)
+                if "429" in err:
+                    match = re.search(r"try again in (\d+(?:\.\d+)?)s", err)
+                    wait = float(match.group(1)) + 1.0 if match else 2 ** attempt
+                    await asyncio.sleep(wait)
+                else:
+                    print(f"  [WARN] Page {page['page']} attempt {attempt + 1}: {e}")
+                    break
 
     valid = []
     for u in units:
@@ -213,12 +221,24 @@ async def process_pdf(
 async def main():
     if not PDF_DIR.exists():
         print(f"Create {PDF_DIR} with course subfolders:")
-        print("  data/pdfs/6.7960/  — Deep Learning lecture notes")
-        print("  data/pdfs/6.036/   — Intro to ML lecture notes")
+        print("  data/pdfs/deeplearning/    — Deep Learning lecture notes")
+        print("  data/pdfs/machinelearning/ — Intro to ML notes")
         return
 
-    semaphore = asyncio.Semaphore(5)  # 5 concurrent Propositionizer calls
-    all_chunks = []
+    OUTPUT_FILE.parent.mkdir(exist_ok=True)
+
+    # Resume support: load already-processed PDFs from checkpoint
+    processed: set[str] = set()
+    if CHECKPOINT_FILE.exists() and OUTPUT_FILE.exists():
+        with open(CHECKPOINT_FILE) as f:
+            processed = set(json.load(f))
+        saved = sum(1 for _ in open(OUTPUT_FILE))
+        print(f"Resuming: {len(processed)} PDF(s) already done, {saved} chunks on disk.\n")
+    elif OUTPUT_FILE.exists():
+        OUTPUT_FILE.unlink()  # output exists but no checkpoint — start fresh
+
+    semaphore = asyncio.Semaphore(2)  # 2 concurrent Propositionizer calls — stays within 30k TPM
+    new_chunks = 0
 
     for course_dir in sorted(PDF_DIR.iterdir()):
         if not course_dir.is_dir():
@@ -229,25 +249,39 @@ async def main():
             print(f"No PDFs found in {course_dir}")
             continue
         for pdf_file in pdfs:
+            pdf_key = str(pdf_file)
+            if pdf_key in processed:
+                print(f"  Skipping {pdf_file.name} (already processed)")
+                continue
+
             print(f"\nProcessing {pdf_file.name} ({course})")
             chunks = await process_pdf(pdf_file, course, semaphore)
-            all_chunks.extend(chunks)
-            print(f"  → {len(chunks)} concept units")
 
-    OUTPUT_FILE.parent.mkdir(exist_ok=True)
-    with open(OUTPUT_FILE, "w") as f:
-        for chunk in all_chunks:
-            f.write(json.dumps(chunk) + "\n")
+            # Save this PDF's chunks immediately
+            with open(OUTPUT_FILE, "a") as f:
+                for chunk in chunks:
+                    f.write(json.dumps(chunk) + "\n")
 
-    print(f"\nTotal concept units: {len(all_chunks)}")
-    print(f"Saved to {OUTPUT_FILE}")
+            processed.add(pdf_key)
+            with open(CHECKPOINT_FILE, "w") as f:
+                json.dump(list(processed), f)
 
+            print(f"  → {len(chunks)} concept units (saved)")
+            new_chunks += len(chunks)
+
+    # Final summary across all chunks on disk
+    all_chunks = []
+    with open(OUTPUT_FILE) as f:
+        all_chunks = [json.loads(line) for line in f]
+
+    print(f"\nDone. {new_chunks} new chunks this run, {len(all_chunks)} total in {OUTPUT_FILE}")
     if all_chunks:
         tokens = [c["token_count"] for c in all_chunks]
         over = sum(1 for t in tokens if t > MAX_CHUNK_TOKENS)
         print(f"Token distribution — min: {min(tokens)}  max: {max(tokens)}  avg: {sum(tokens)//len(tokens)}")
         if over:
             print(f"  Note: {over} units exceed {MAX_CHUNK_TOKENS} tokens (multi-concept candidates — review manually)")
+    print("\nTo start fresh: delete data/chunks.jsonl and data/.chunks_checkpoint.json")
 
 
 if __name__ == "__main__":
