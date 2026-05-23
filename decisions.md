@@ -4,6 +4,38 @@ Each version entry documents what was surfaced on that date: issues flagged, dec
 
 ---
 
+## Version 1.4 — 2026-05-24
+
+### STATUS: Pipeline complete through script 03. Issues resolved by first full run: I9 (scenario count), I11 (temperatures now documented in writing_notes.md). Remaining open: I3, I4, I8, I10, I12, I13, I15, I16. New scoping decisions made for EMNLP deadline.
+
+---
+
+### Resolved by pipeline run
+
+**I9. "80 scenarios" claim — RESOLVED 2026-05-24**
+Actual pipeline output: 658 validated utterances from 303 source chunks. 54% overall acceptance rate (52% accurate/erroneous, 56% comprehension/confusion). 129 broken pairs excluded. Paper now states actual counts; "80 scenarios" language removed.
+
+**I11. Temperature choices — RESOLVED 2026-05-24**
+Documented in `paper/writing_notes.md` and osis signal. Values: script 01 concept extraction 0.3, pair generation 0.5; script 02 Dean unspecified (default); script 03 model eval 0.7. To be included in paper's Implementation Details appendix.
+
+---
+
+### Scoping decisions for EMNLP submission (2026-05-24)
+
+**I3. Multi-domain corpus — SCOPED DOWN for v1**
+LibreTexts integration not feasible within deadline. The paper's multi-domain claim is revised: the corpus covers two MIT OCW courses in ML/deep learning. The MathTutorBench distinction (math-only) holds — we are CS/ML, not math. Multi-domain extension is explicit future work.
+
+**I4. Model coverage — SCOPED DOWN for v1**
+Script 03 implements GPT-4o, Claude Sonnet 4.6, Gemini 2.0 Flash. Llama, LearnLM, and Qwen2.5-7B-SocraticLM are deferred to future work. The three implemented models provide a valid general-LLM comparison; the fine-tuned model comparison is acknowledged as a limitation.
+
+**I10. Gold annotation pipeline — DEFERRED**
+Scripts 04–08 (metric scorers) are the immediate priority. The gold annotation step (professors selecting R₀ₙₑˣ) requires the metric scripts to exist first so professors can see scored candidates. For this submission, automated metrics (M1/M2/M3) produce the benchmark scores; human validation (Phase 4) is described as planned future validation work.
+
+**I13. Cross-page chunking — RESOLVED by design**
+The Propositionizer (script 00) processes per-page markdown from Mistral OCR. For slide-format PDFs this is correct. For textbook PDFs the page boundary is a known limitation, documented in `paper/writing_notes.md` under Limitations. No code change needed for this submission.
+
+---
+
 ## Version 1.3 — 2026-05-23
 
 ### STATUS: Partially resolved 2026-05-23. Cross-script audit surfaced 16 issues. 6 resolved same session: I1 (cross-judge Dean), I2 (pair integrity check), I5 (circular misconception), I6 (token filter), I7 (Propositionizer chunking redesign), I14 (rejection log). 10 remain open: I3, I4, I8, I9, I10, I11, I12, I13, I15, I16.
