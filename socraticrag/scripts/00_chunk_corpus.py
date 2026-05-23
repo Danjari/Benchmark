@@ -19,7 +19,7 @@ propositions to concept-level units appropriate for multi-sentence educational R
 Output schema per chunk:
   chunk_id     — 8-char MD5 hash of (source_filename, chunk_index)
   source       — PDF filename
-  course       — course directory name (e.g. "6.7960")
+  course       — full course name from COURSE_NAMES mapping (e.g. "MIT 6.7960 Deep Learning (Fall 2024)")
   chunk_index  — sequential index within the document
   page         — source page number
   concept      — short concept label extracted by the Propositionizer (metadata only)
@@ -49,6 +49,11 @@ MIN_CHUNK_TOKENS = 100   # below this a unit lacks enough content for tutoring
 MAX_CHUNK_TOKENS = 500   # above this a unit spans multiple concepts; paper target: 200–500
 PDF_DIR = Path("data/pdfs")
 OUTPUT_FILE = Path("data/chunks.jsonl")
+
+COURSE_NAMES = {
+    "deeplearning":    "MIT 6.7960 Deep Learning (Fall 2024)",
+    "machinelearning": "MIT 6.036 Introduction to Machine Learning",
+}
 
 # ── Propositionizer prompt ─────────────────────────────────────────────────────
 
@@ -218,7 +223,7 @@ async def main():
     for course_dir in sorted(PDF_DIR.iterdir()):
         if not course_dir.is_dir():
             continue
-        course = course_dir.name
+        course = COURSE_NAMES.get(course_dir.name, course_dir.name)
         pdfs = sorted(course_dir.glob("*.pdf"))
         if not pdfs:
             print(f"No PDFs found in {course_dir}")
