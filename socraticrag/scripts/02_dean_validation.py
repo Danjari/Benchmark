@@ -28,13 +28,14 @@ Pairs where one sibling was rejected are excluded so both are regenerated.
 """
 
 import os
+import re
 import json
 import asyncio
 from collections import Counter
 from pathlib import Path
 from anthropic import AsyncAnthropic
 from dotenv import load_dotenv
-from tqdm.asyncio import tqdm
+from tqdm import tqdm
 
 load_dotenv()
 
@@ -45,6 +46,8 @@ DEAN_MODEL = "claude-sonnet-4-6"
 INPUT_FILE = Path("data/utterances_raw.jsonl")
 OUTPUT_FILE = Path("data/utterances.jsonl")
 REJECTED_FILE = Path("data/utterances_rejected.jsonl")  # saved for acceptance-rate reporting in paper
+CHECKPOINT_FILE = Path("data/.dean_checkpoint.json")
+RESULTS_TEMP_FILE = Path("data/.dean_results_temp.jsonl")
 
 # ── Dean prompts ───────────────────────────────────────────────────────────────
 
@@ -152,31 +155,42 @@ async def validate(utterance: dict, semaphore: asyncio.Semaphore) -> dict:
                 correct_understanding=correct_understanding,
             )
 
-        try:
-            response = await client.messages.create(
-                model=DEAN_MODEL,
-                max_tokens=512,
-                system=(
-                    "You are a strict dataset quality validator. "
-                    "Respond ONLY with valid JSON matching the specified schema. "
-                    "No preamble, no explanation, no markdown code fences."
-                ),
-                messages=[{"role": "user", "content": prompt}],
-            )
-            raw = response.content[0].text.strip()
-            # Strip markdown code fences in case Claude adds them despite instructions
-            if raw.startswith("```"):
-                raw = raw[raw.index("{"):]
-                raw = raw[: raw.rindex("}") + 1]
-            result = json.loads(raw)
-            utterance["dean_validated"] = result.get("accept", False)
-            utterance["dean_result"] = result
-            return utterance
-        except Exception as e:
-            print(f"Dean error on {utterance['utterance_id']}: {e}")
-            utterance["dean_validated"] = False
-            utterance["dean_result"] = {"accept": False, "reason": str(e)}
-            return utterance
+        for attempt in range(6):
+            try:
+                response = await client.messages.create(
+                    model=DEAN_MODEL,
+                    max_tokens=512,
+                    system=(
+                        "You are a strict dataset quality validator. "
+                        "Respond ONLY with valid JSON matching the specified schema. "
+                        "No preamble, no explanation, no markdown code fences."
+                    ),
+                    messages=[{"role": "user", "content": prompt}],
+                )
+                raw = response.content[0].text.strip()
+                if raw.startswith("```"):
+                    raw = raw[raw.index("{"):]
+                    raw = raw[: raw.rindex("}") + 1]
+                result = json.loads(raw)
+                utterance["dean_validated"] = result.get("accept", False)
+                utterance["dean_result"] = result
+                return utterance
+            except Exception as e:
+                err = str(e)
+                if "429" in err or "rate_limit" in err or "overloaded" in err:
+                    wait = 2 ** attempt
+                    match = re.search(r"try again in (\d+(?:\.\d+)?)s", err)
+                    if match:
+                        wait = float(match.group(1)) + 1.0
+                    await asyncio.sleep(wait)
+                else:
+                    print(f"Dean error on {utterance['utterance_id']}: {e}")
+                    utterance["dean_validated"] = False
+                    utterance["dean_result"] = {"accept": False, "reason": str(e)}
+                    return utterance
+        utterance["dean_validated"] = False
+        utterance["dean_result"] = {"accept": False, "reason": "max retries exceeded"}
+        return utterance
 
 
 def check_contrastive_pairs(utterances: list[dict]) -> set[str]:
@@ -219,11 +233,30 @@ async def main():
         for line in f:
             utterances.append(json.loads(line))
 
-    print(f"Validating {len(utterances)} utterances with Dean agent...")
+    # Resume support: load already-validated results from temp file
+    validated: dict[str, dict] = {}
+    if CHECKPOINT_FILE.exists() and RESULTS_TEMP_FILE.exists():
+        with open(RESULTS_TEMP_FILE) as f:
+            for line in f:
+                u = json.loads(line)
+                validated[u["utterance_id"]] = u
+        print(f"Resuming: {len(validated)}/{len(utterances)} utterances already validated.")
 
-    semaphore = asyncio.Semaphore(5)
-    tasks = [validate(u, semaphore) for u in utterances]
-    results = await tqdm.gather(*tasks, desc="Dean validation")
+    remaining = [u for u in utterances if u["utterance_id"] not in validated]
+    print(f"Validating {len(remaining)} remaining utterances with Dean agent (Claude cross-judge)...")
+
+    semaphore = asyncio.Semaphore(2)  # 2 concurrent — Claude TPM is generous but stay safe
+
+    for utterance in tqdm(remaining, desc="Dean validation"):
+        result = await validate(utterance, semaphore)
+        validated[result["utterance_id"]] = result
+
+        with open(RESULTS_TEMP_FILE, "a") as f:
+            f.write(json.dumps(result) + "\n")
+        with open(CHECKPOINT_FILE, "w") as f:
+            json.dump(list(validated.keys()), f)
+
+    results = list(validated.values())
 
     accepted = [u for u in results if u["dean_validated"]]
     rejected = [u for u in results if not u["dean_validated"]]

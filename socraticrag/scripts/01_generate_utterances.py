@@ -17,6 +17,7 @@ distinct from utterance U. This guarantees:
 """
 
 import os
+import re
 import json
 import asyncio
 from pathlib import Path
@@ -30,6 +31,7 @@ client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 CHUNKS_FILE = Path("data/chunks.jsonl")
 OUTPUT_FILE = Path("data/utterances_raw.jsonl")
+CHECKPOINT_FILE = Path("data/.utterances_checkpoint.json")
 
 # ── Prompts ────────────────────────────────────────────────────────────────────
 
@@ -112,17 +114,26 @@ Respond ONLY with valid JSON:
 
 async def gpt4o(prompt: str, semaphore: asyncio.Semaphore, temperature: float = 0.5) -> dict | None:
     async with semaphore:
-        try:
-            response = await client.chat.completions.create(
-                model="gpt-4o",
-                messages=[{"role": "user", "content": prompt}],
-                response_format={"type": "json_object"},
-                temperature=temperature,
-            )
-            return json.loads(response.choices[0].message.content)
-        except Exception as e:
-            print(f"  API error: {e}")
-            return None
+        for attempt in range(6):
+            try:
+                response = await client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[{"role": "user", "content": prompt}],
+                    response_format={"type": "json_object"},
+                    temperature=temperature,
+                )
+                return json.loads(response.choices[0].message.content)
+            except Exception as e:
+                err = str(e)
+                if "429" in err:
+                    match = re.search(r"try again in (\d+(?:\.\d+)?)s", err)
+                    wait = float(match.group(1)) + 1.0 if match else 2 ** attempt
+                    await asyncio.sleep(wait)
+                else:
+                    print(f"  API error: {e}")
+                    return None
+        print(f"  Max retries exceeded")
+        return None
 
 
 # ── Core generation ────────────────────────────────────────────────────────────
@@ -256,28 +267,39 @@ async def main():
         for line in f:
             chunks.append(json.loads(line))
 
-    print(f"Loaded {len(chunks)} chunks. Generating utterances (2-step contrastive)...")
+    # Resume support
+    processed: set[str] = set()
+    if CHECKPOINT_FILE.exists() and OUTPUT_FILE.exists():
+        with open(CHECKPOINT_FILE) as f:
+            processed = set(json.load(f))
+        saved = sum(1 for _ in open(OUTPUT_FILE))
+        print(f"Resuming: {len(processed)} chunks already done, {saved} utterances on disk.")
 
-    semaphore = asyncio.Semaphore(3)  # 3 concurrent chunks × 3 calls each = 9 max concurrent
-    tasks = [generate_for_chunk(chunk, semaphore) for chunk in chunks]
-    results = await tqdm.gather(*tasks, desc="Generating")
+    remaining = [c for c in chunks if c["chunk_id"] not in processed]
+    print(f"Loaded {len(chunks)} chunks. {len(remaining)} remaining. Generating utterances...")
 
-    all_utterances = []
+    semaphore = asyncio.Semaphore(1)  # 1 chunk at a time — 3 sequential calls per chunk, stays within 30k TPM
     failed = 0
-    for result in results:
+
+    for chunk in tqdm(remaining, desc="Generating"):
+        result = await generate_for_chunk(chunk, semaphore)
+
         if result:
-            all_utterances.extend(result)
+            with open(OUTPUT_FILE, "a") as f:
+                for u in result:
+                    f.write(json.dumps(u) + "\n")
         else:
             failed += 1
 
-    with open(OUTPUT_FILE, "w") as f:
-        for u in all_utterances:
-            f.write(json.dumps(u) + "\n")
+        processed.add(chunk["chunk_id"])
+        with open(CHECKPOINT_FILE, "w") as f:
+            json.dump(list(processed), f)
 
-    print(f"\nGenerated {len(all_utterances)} utterances from {len(chunks) - failed}/{len(chunks)} chunks")
-    print(f"Expected: {len(chunks) * 4}  |  Got: {len(all_utterances)}  |  Failed chunks: {failed}")
-    print(f"Contrastive pairs: {len(all_utterances) // 2} (accurate/erroneous + comprehension/confusion per chunk)")
-    print(f"Saved to {OUTPUT_FILE}")
+    total = sum(1 for _ in open(OUTPUT_FILE))
+    print(f"\nDone. {total} utterances total in {OUTPUT_FILE}")
+    print(f"Failed chunks this run: {failed}")
+    print(f"Contrastive pairs: {total // 2}")
+    print("\nTo start fresh: delete data/utterances_raw.jsonl and data/.utterances_checkpoint.json")
 
 
 if __name__ == "__main__":
