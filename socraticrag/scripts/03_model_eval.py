@@ -18,6 +18,7 @@ Cross-judge protocol (Zheng et al., 2024):
 """
 
 import os
+import re
 import json
 import asyncio
 from pathlib import Path
@@ -25,7 +26,7 @@ from openai import AsyncOpenAI
 from anthropic import AsyncAnthropic
 import google.generativeai as genai
 from dotenv import load_dotenv
-from tqdm.asyncio import tqdm
+from tqdm import tqdm
 
 load_dotenv()
 
@@ -35,6 +36,8 @@ genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 INPUT_FILE = Path("data/utterances.jsonl")
 OUTPUT_FILE = Path("data/responses.jsonl")
+CHECKPOINT_FILE = Path("data/.responses_checkpoint.json")
+RESULTS_TEMP_FILE = Path("data/.responses_temp.jsonl")
 
 # Socratic tutor system prompt adapted from EULER (Bonino et al., 2024)
 SOCRATIC_SYSTEM_PROMPT = """You are a Socratic tutor. Your role is to guide students to discover answers themselves through thoughtful questions.
@@ -53,62 +56,92 @@ USER_TURN = """Student says: "{utterance}"
 
 Respond with a single Socratic guiding question."""
 
-MODELS = {
-    "gpt-4o": "openai",
-    "claude-sonnet-4-6": "anthropic",
-    "gemini-2.0-flash": "gemini",
-}
 
-
-async def call_openai(chunk_text: str, utterance: str, semaphore: asyncio.Semaphore) -> str:
+async def call_openai(chunk_text: str, utterance: str, semaphore: asyncio.Semaphore) -> str | None:
     async with semaphore:
-        response = await openai_client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": SOCRATIC_SYSTEM_PROMPT.format(chunk_text=chunk_text)},
-                {"role": "user", "content": USER_TURN.format(utterance=utterance)},
-            ],
-            temperature=0.7,
-            max_tokens=300,
-        )
-        return response.choices[0].message.content.strip()
+        for attempt in range(6):
+            try:
+                response = await openai_client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {"role": "system", "content": SOCRATIC_SYSTEM_PROMPT.format(chunk_text=chunk_text)},
+                        {"role": "user", "content": USER_TURN.format(utterance=utterance)},
+                    ],
+                    temperature=0.7,
+                    max_tokens=300,
+                )
+                return response.choices[0].message.content.strip()
+            except Exception as e:
+                err = str(e)
+                if "429" in err:
+                    match = re.search(r"try again in (\d+(?:\.\d+)?)s", err)
+                    wait = float(match.group(1)) + 1.0 if match else 2 ** attempt
+                    await asyncio.sleep(wait)
+                else:
+                    print(f"  [gpt-4o] error: {e}")
+                    return None
+        return None
 
 
-async def call_anthropic(chunk_text: str, utterance: str, semaphore: asyncio.Semaphore) -> str:
+async def call_anthropic(chunk_text: str, utterance: str, semaphore: asyncio.Semaphore) -> str | None:
     async with semaphore:
-        response = await anthropic_client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=300,
-            system=SOCRATIC_SYSTEM_PROMPT.format(chunk_text=chunk_text),
-            messages=[{"role": "user", "content": USER_TURN.format(utterance=utterance)}],
-        )
-        return response.content[0].text.strip()
+        for attempt in range(6):
+            try:
+                response = await anthropic_client.messages.create(
+                    model="claude-sonnet-4-6",
+                    max_tokens=300,
+                    system=SOCRATIC_SYSTEM_PROMPT.format(chunk_text=chunk_text),
+                    messages=[{"role": "user", "content": USER_TURN.format(utterance=utterance)}],
+                )
+                return response.content[0].text.strip()
+            except Exception as e:
+                err = str(e)
+                if "429" in err or "rate_limit" in err or "overloaded" in err:
+                    wait = 2 ** attempt
+                    match = re.search(r"try again in (\d+(?:\.\d+)?)s", err)
+                    if match:
+                        wait = float(match.group(1)) + 1.0
+                    await asyncio.sleep(wait)
+                else:
+                    print(f"  [claude] error: {e}")
+                    return None
+        return None
 
 
-async def call_gemini(chunk_text: str, utterance: str, semaphore: asyncio.Semaphore) -> str:
+async def call_gemini(chunk_text: str, utterance: str, semaphore: asyncio.Semaphore) -> str | None:
     async with semaphore:
-        model = genai.GenerativeModel(
-            model_name="gemini-2.0-flash",
-            system_instruction=SOCRATIC_SYSTEM_PROMPT.format(chunk_text=chunk_text),
-        )
-        response = await asyncio.to_thread(
-            model.generate_content,
-            USER_TURN.format(utterance=utterance),
-        )
-        return response.text.strip()
+        for attempt in range(6):
+            try:
+                model = genai.GenerativeModel(
+                    model_name="gemini-2.0-flash",
+                    system_instruction=SOCRATIC_SYSTEM_PROMPT.format(chunk_text=chunk_text),
+                )
+                response = await asyncio.to_thread(
+                    model.generate_content,
+                    USER_TURN.format(utterance=utterance),
+                )
+                return response.text.strip()
+            except Exception as e:
+                err = str(e)
+                if "429" in err or "quota" in err.lower() or "resource_exhausted" in err.lower():
+                    await asyncio.sleep(2 ** attempt)
+                else:
+                    print(f"  [gemini] error: {e}")
+                    return None
+        return None
 
 
 async def evaluate_utterance(u: dict, semaphore: asyncio.Semaphore) -> list[dict]:
-    rows = []
-    calls = {
+    model_calls = {
         "gpt-4o": call_openai(u["chunk_text"], u["utterance"], semaphore),
         "claude-sonnet-4-6": call_anthropic(u["chunk_text"], u["utterance"], semaphore),
         "gemini-2.0-flash": call_gemini(u["chunk_text"], u["utterance"], semaphore),
     }
-    results = await asyncio.gather(*calls.values(), return_exceptions=True)
-    for model, result in zip(calls.keys(), results):
-        if isinstance(result, Exception):
-            print(f"Error [{model}] {u['utterance_id']}: {result}")
+    results = await asyncio.gather(*model_calls.values())
+    rows = []
+    for model, result in zip(model_calls.keys(), results):
+        if result is None:
+            print(f"  [SKIP] {u['utterance_id']} / {model}")
             continue
         rows.append({
             "response_id": f"{u['utterance_id']}_{model.replace('-', '_')}",
@@ -130,24 +163,46 @@ async def main():
         for line in f:
             utterances.append(json.loads(line))
 
-    print(f"Running {len(utterances)} utterances x 3 models = {len(utterances) * 3} API calls...")
+    # Resume support: load already-processed utterance_ids from checkpoint
+    done: set[str] = set()
+    if CHECKPOINT_FILE.exists() and RESULTS_TEMP_FILE.exists():
+        with open(CHECKPOINT_FILE) as f:
+            done = set(json.load(f))
+        saved = sum(1 for _ in open(RESULTS_TEMP_FILE))
+        print(f"Resuming: {len(done)} utterances already done, {saved} responses on disk.")
 
-    semaphore = asyncio.Semaphore(3)
-    tasks = [evaluate_utterance(u, semaphore) for u in utterances]
-    results = await tqdm.gather(*tasks, desc="Model eval")
+    remaining = [u for u in utterances if u["utterance_id"] not in done]
+    print(f"{len(utterances)} utterances total. {len(remaining)} remaining. Running 3 models each...")
 
-    all_responses = [row for batch in results for row in batch]
+    semaphore = asyncio.Semaphore(3)  # 3 concurrent calls — one per model per utterance
+
+    for u in tqdm(remaining, desc="Model eval"):
+        rows = await evaluate_utterance(u, semaphore)
+        if rows:
+            with open(RESULTS_TEMP_FILE, "a") as f:
+                for row in rows:
+                    f.write(json.dumps(row) + "\n")
+        done.add(u["utterance_id"])
+        with open(CHECKPOINT_FILE, "w") as f:
+            json.dump(list(done), f)
+
+    # Compile final output
+    all_responses = []
+    with open(RESULTS_TEMP_FILE) as f:
+        for line in f:
+            all_responses.append(json.loads(line))
 
     with open(OUTPUT_FILE, "w") as f:
         for row in all_responses:
             f.write(json.dumps(row) + "\n")
 
     print(f"\nSaved {len(all_responses)} responses to {OUTPUT_FILE}")
-    by_model = {}
+    by_model: dict[str, int] = {}
     for r in all_responses:
         by_model[r["model"]] = by_model.get(r["model"], 0) + 1
-    for model, count in by_model.items():
+    for model, count in sorted(by_model.items()):
         print(f"  {model}: {count} responses")
+    print(f"\nTo start fresh: delete data/responses.jsonl, data/.responses_temp.jsonl, data/.responses_checkpoint.json")
 
 
 if __name__ == "__main__":

@@ -103,10 +103,10 @@ Additional supporting evidence for the gap: MathTutorBench evaluates its own Soc
 **Build phase active as of 2026-05-23.** Scripts 00–03 implemented and pipeline-ready. Target venue is EMNLP 2026 (deadline May 25, 2026). Two professors confirmed as collaborators/co-authors. The primary prose artifact is `benchmark paper.md`; the primary code artifact is `socraticrag/scripts/`.
 
 **What is built:**
-- Script 00: Two-step corpus ingestion (Mistral OCR → GPT-4o Propositionizer). Outputs `data/chunks.jsonl` where each chunk is one concept unit.
-- Script 01: Contrastive utterance generation (GPT-4o). Two-step: concept extraction from C → contrastive pair generation. Outputs `data/utterances_raw.jsonl`.
-- Script 02: Dean validation (Claude — cross-judge). Validates (P, U) pairs against 4–5 criteria; checks contrastive pair integrity for all four states; saves accepted (`utterances.jsonl`) and rejected (`utterances_rejected.jsonl`) with per-state acceptance rates.
-- Script 03: Model evaluation (GPT-4o, Claude, Gemini 2.0 Flash). Models receive (C, U) only; P propagated in output for downstream metric scripts.
+- Script 00: Two-step corpus ingestion (Mistral OCR `mistral-ocr-latest` → GPT-4o Propositionizer, temp=0.1). Outputs `data/chunks.jsonl`. Token filter: 100 min, 500 max (flagged above 500). **Run results:** ~303 concept units from 2 MIT OCW courses (6.7960 Deep Learning + 6.036 ML), avg 171 tokens (range 100–694). Format asymmetry documented: slide-format DL lectures yield fewer units than textbook-format ML notes — treated as limitation, not bias.
+- Script 01: Contrastive utterance generation (GPT-4o). Three-step per chunk: concept extraction (temp=0.3) → accurate/erroneous pair (temp=0.5) → comprehension/confusion pair (temp=0.5). Profile P (target_concept, correct_understanding, misconception) stored as first-class field distinct from utterance U. **Run results:** 1,212 raw utterances (303 chunks × 4), 1 chunk failed concept extraction.
+- Script 02: Dean validation (Claude Sonnet 4.6 — cross-judge). 4 criteria for all states, 5th criterion (misconception match) for erroneous. Post-validation contrastive pair integrity check: broken pairs excluded from output, both siblings flagged for regeneration. Saves accepted (`utterances.jsonl`), all rejected (`utterances_rejected.jsonl`), per-state acceptance rates reported. **Final run results:** 658 accepted utterances; overall acceptance rate 54% (accurate 52%, erroneous 52%, comprehension 56%, confusion 56%); 129 broken chunks / 258 utterances excluded; 215 individually rejected.
+- Script 03: Model evaluation (GPT-4o, Claude Sonnet 4.6, Gemini 2.0 Flash). Sequential processing with retry/backoff and checkpoint/resume. Models receive (C, U) only; P propagated in output for downstream metric scripts. **Not yet run.**
 
 **What is not yet built:** Scripts 04–08 (Metric 1, Metric 2, Metric 3, RAGAS baseline, analysis). Gold annotation pipeline. README.
 
@@ -132,5 +132,6 @@ Standalone research project. Primary artifacts: `benchmark paper.md` (methodolog
 
 ## Sessions
 
+- 2026-05-24 — Scripts 00–02 first full run complete: 303 concept units, 1,212 raw utterances, 556 accepted (139 complete scenarios), ~45% acceptance rate across all 4 cognitive states; 102 broken pairs excluded; script 03 hardened with retry+checkpoint; pipeline-run-results signal created with paper-ready methodology details · `claude -r adf32399-7ac6-4377-9071-3d73643824d5`
 - 2026-05-23 — Build phase begins: scripts 00–03 implemented; Propositionizer chunking redesign; cross-judge at construction; Dean switched to Claude; contrastive pair check extended; rejection log added; 16-issue audit logged in decisions.md v1.3; 6 resolved; benchmark paper and all osis docs updated · `claude -r 242d2edc-a547-4cdb-a480-4616a9850466`
 - 2026-05-11 — Updated twin to reflect corpus change (MIT OCW + LibreTexts), silver-to-gold pipeline, model list corrections (Qwen2.5-7B-SocraticLM, LearnLM confirmed), CoT citation fix (Wei et al. 2022), notation corrections, Lefton reframing, new BLEU gap argument, all decisions resolved · `claude -r 127ec0b2-7994-4530-bcae-3fbf88969adc`

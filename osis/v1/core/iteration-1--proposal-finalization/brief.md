@@ -29,11 +29,20 @@ Deliver a professor-ready research proposal by May 25, 2026 (EMNLP 2026 submissi
 - The model list (Qwen2.5-7B-SocraticLM, LearnLM, GPT-4o, Claude, Llama)
 - The EMNLP 2026 target
 
-## Build Phase Status (as of 2026-05-23)
+## Build Phase Status (as of 2026-05-24)
 
-Build phase has begun. Scripts 00–03 are implemented and pipeline-ready. Open implementation gaps (tracked in decisions.md v1.3):
+Scripts 00–02 have completed their first full run. Pipeline is producing clean data.
 
-- **I3** — Multi-domain corpus: LibreTexts not yet integrated; currently MIT OCW ML only
+**Confirmed results:**
+- Corpus: ~303 concept units from MIT 6.7960 (Deep Learning) + MIT 6.036 (ML), avg 171 tokens
+- Raw utterances: 1,212 (303 chunks × 4 cognitive states)
+- Dean validation acceptance rate: ~45% overall (symmetric across states: 44–48%)
+- Final validated dataset: 556 accepted utterances = 139 complete 4-utterance scenarios
+- 102 broken contrastive pairs excluded (Metric 3 integrity preserved)
+- Script 02 re-running on 211 credit-interrupted utterances; expected final: ~600–650 utterances
+
+**Open implementation gaps (tracked in decisions.md v1.3):**
+- **I3** — Multi-domain corpus: LibreTexts not yet integrated; currently MIT OCW only (2 courses)
 - **I4** — Model coverage in script 03: Llama, LearnLM, Qwen2.5-SocraticLM not yet implemented
 - **I10** — Gold annotation pipeline (scripts 04–08) not yet written
 - **I16** — No README in `socraticrag/`

@@ -1,5 +1,79 @@
 # SocraticRAG — Paper Writing Notes
 
+---
+
+## Dataset Construction Section
+
+### Corpus and Chunking (Script 00)
+
+**Pipeline:** Two steps — Mistral OCR (`mistral-ocr-latest`) converts each PDF page to markdown, then GPT-4o (temperature=0.1) segments the markdown into concept units via the Propositionizer prompt.
+
+**Token filter:** 100-token floor (below = slide header or orphaned fragment), 500-token soft ceiling (above = likely multi-concept block; flagged but accepted; Dean's derivability criterion acts as downstream filter).
+
+**Empirical results from first run:**
+- ~303 valid concept units across 2 MIT OCW courses (6.7960 Deep Learning + 6.036 ML)
+- Token distribution: min 100, max 694, avg 171 tokens
+- 3 units exceeded 500-token ceiling (flagged for manual review)
+
+**Draft language for Dataset Construction:**
+> "We extract concept units from lecture PDFs using a two-step pipeline: Mistral OCR converts each page to structured markdown, and GPT-4o segments the markdown into concept-level chunks following Chen et al. (EMNLP 2024). Each unit covers exactly one teachable idea — a definition, theorem, algorithm, or worked example. Units below 100 tokens (slide headers, orphaned fragments) are discarded; units above 500 tokens are flagged as potential multi-concept candidates. The resulting corpus contains X concept units from two MIT OpenCourseWare courses (MIT 6.7960 Deep Learning and MIT 6.036 Introduction to Machine Learning), with a mean of 171 tokens per unit (range: 100–694)."
+
+---
+
+### Utterance Generation (Script 01)
+
+**Three API calls per chunk (GPT-4o, cross-judge isolation from Claude Dean):**
+1. Concept extraction (temperature=0.3): identifies the single primary teachable concept; derives what correct understanding looks like from C alone; derives a specific misconception that arises only from misreading C — not imported from external knowledge.
+2. Contrastive pair A/E (temperature=0.5): accurate utterance demonstrates correct understanding; erroneous utterance expresses the specific C-grounded misconception from step 1.
+3. Contrastive pair C/C (temperature=0.5): comprehension utterance uses explicit markers ("I think I understand now…", "So what you're saying is…", "Ah, I see —"); confusion utterance uses explicit markers ("I'm confused about…", "I don't understand why…", "Wait, I'm not sure…").
+
+**Key design choice:** Profile P (target_concept, correct_understanding, misconception) is extracted in step 1 and stored as a first-class field, distinct from utterance U. This ensures: (a) erroneous misconceptions are grounded in C, not in external misconception lists; (b) contrastive pairs target the same concept, which is a structural requirement for Metric 3 scoring.
+
+**Results:** 1,212 raw utterances from 303 chunks (303 × 4). 1 chunk failed concept extraction and was skipped.
+
+**Draft language:**
+> "For each concept unit C, we apply a three-step generation procedure using GPT-4o. First, we extract the primary teachable concept and derive a C-grounded misconception — a specific wrong belief that could arise from misreading C alone, without importing external knowledge. Second, we generate a contrastive accurate/erroneous pair: both utterances target the same concept, with the erroneous utterance expressing the C-derived misconception. Third, we generate a contrastive comprehension/confusion pair: both utterances use explicit metacognitive markers. Each step enforces that only concepts present in C may appear in U, establishing C as the sole permitted knowledge source for all downstream evaluation."
+
+---
+
+### Dean Validation (Script 02)
+
+**Validator:** Claude Sonnet 4.6. Cross-judge: different model family from GPT-4o generator. Motivated by Zheng et al. (NeurIPS 2024), Du et al. (ICML 2024), Chan et al. (ICLR 2024).
+
+**Four criteria (all utterances):**
+1. **State Match** — utterance authentically expresses the claimed cognitive state. Comprehension/confusion require explicit markers, not restatements. Accurate requires correct understanding, not a question that could come from any state.
+2. **Derivability** — utterance is derivable ONLY from C. Any concept not explicitly present in C fails this criterion, even if the concept is implied or closely related.
+3. **Plausibility** — a real university student could plausibly say this.
+4. **Concept Presence** — the target concept is explicitly present in C (guards against hallucinated concepts in step 1).
+
+**Fifth criterion (erroneous only):**
+5. **Misconception Match** — utterance expresses the specific misconception from step 1 of generation, not a generic or unrelated error.
+
+**Contrastive pair integrity check (post-individual validation):**
+- For each chunk, check accurate/erroneous pair and comprehension/confusion pair separately.
+- If one sibling is accepted and the other rejected → broken pair → both excluded from output.
+- If siblings target different concepts → broken pair → both excluded.
+- Broken pairs are flagged for regeneration with script 01.
+- Rationale: Metric 3 requires both siblings to compare against; a half-pair is useless for contrastive scoring.
+
+**Empirical results (final):**
+- Accepted: 658 utterances
+- Individually rejected: 215
+- Broken pairs excluded: 129 chunks / 258 utterances
+- Acceptance rate by cognitive state: accurate 52%, erroneous 52%, comprehension 56%, confusion 56%
+- Overall acceptance rate: ~54%
+
+**Top rejection reasons (for paper discussion):**
+- Comprehension utterances lacking explicit comprehension markers (reads as accurate restatement)
+- Accurate utterances importing outside knowledge not present in C
+- Erroneous utterances expressing generic gradient descent errors instead of the specific C-derived misconception
+- Concept presence failures where C only demonstrates a concept numerically but never names it
+
+**Draft language:**
+> "Each (P, U) pair is validated by a Claude Sonnet 4.6 Dean agent — a different model family from the GPT-4o generator, implementing the cross-judge protocol of Zheng et al. (2024). The Dean applies four criteria: (1) state match, (2) derivability from C alone, (3) plausibility for a university student, and (4) concept presence in C. For erroneous utterances, a fifth criterion verifies that the expressed error matches the specific C-grounded misconception derived in generation step 1 rather than a generic or unrelated error. Following individual validation, a contrastive pair integrity check verifies that both siblings of each pair are accepted and target the same concept; broken pairs are excluded and flagged for regeneration. The overall acceptance rate is 54% (range: 52–56% across cognitive states), reflecting the strictness of the derivability criterion. The final dataset contains 658 validated utterances from 303 source chunks."
+
+---
+
 ## Limitations Section
 
 ### Visual slide content and text-grounded RAG
