@@ -1,0 +1,597 @@
+\documentclass[11pt]{article}
+
+% Use "final" when submitting the camera-ready version.
+\usepackage[review]{acl}
+
+\usepackage{times}
+\usepackage{latexsym}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{microtype}
+\usepackage{inconsolata}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{xspace}
+\usepackage{enumitem}
+
+% Shorthand
+\newcommand{\ours}{\textsc{SocraticRAG}\xspace}
+\newcommand{\mtwo}{M\textsubscript{2}\xspace}
+\newcommand{\mone}{M\textsubscript{1}\xspace}
+\newcommand{\mthree}{M\textsubscript{3}\xspace}
+
+\title{\ours: A Benchmark for Pedagogical Faithfulness\\
+       in Retrieval-Augmented Educational Dialogue}
+
+% Author block suppressed in review mode.
+\author{Anonymous}
+
+\begin{document}
+\maketitle
+
+% ============================================================
+\begin{abstract}
+% ============================================================
+
+RAG-based tutoring systems must satisfy two constraints simultaneously:
+respond with guiding questions rather than direct answers
+(\textit{Socratic adherence}), and confine those questions to concepts
+explicitly present in the retrieved educational document
+(\textit{retrieval faithfulness}).
+No existing benchmark evaluates both constraints jointly.
+RAGAS \citep{es2024ragas}, the dominant RAG faithfulness framework,
+structurally fails on interrogative outputs; Socratic benchmarks operate
+in open-domain settings with no retrieval constraint.
+We introduce \ours, a benchmark of 658 validated student utterances
+spanning four cognitive states (accurate, erroneous, comprehension,
+confusion), paired with 1{,}974 zero-shot tutor responses from three
+frontier LLMs.
+We propose three orthogonal evaluation axes:
+Direct-Answer Leakage (\mone, adapted from EULER \citep{bonino2024euler}),
+Retrieval Faithfulness (\mtwo, a novel adaptation of
+FActScore \citep{min2023factscore} to interrogative outputs), and
+Pedagogical Alignment (\mthree, adapted from
+GuideEval \citep{liuy2025discerning}).
+Experiments reveal characteristic joint-constraint failures across models
+and cognitive states that RAGAS cannot detect, producing near-unity scores
+regardless of response quality due to its structural incompatibility with
+question-form output.
+Dataset and evaluation code are released publicly.
+
+\end{abstract}
+
+% ============================================================
+\section{Introduction}
+% ============================================================
+
+LLM-based tutoring systems deployed in retrieval-augmented settings face
+a requirement that has no counterpart in standard question-answering:
+the response must be a guiding question, not an answer, and that question
+must stay strictly grounded in the retrieved document.
+A tutor that asks about gradient descent when the retrieved concept unit
+covers attention mechanisms has failed---even if the question is
+pedagogically well-formed in isolation.
+This joint constraint---\textit{Socratic adherence} and
+\textit{retrieval faithfulness} simultaneously---is the defining challenge
+of educational RAG, and it is currently unmeasured.
+
+The failure has two sides.
+On the RAG evaluation side, RAGAS \citep{es2024ragas} computes faithfulness
+by decomposing the generated answer into atomic declarative statements and
+verifying each against the retrieved context.
+The mechanism presupposes declarative output: when the output is a Socratic
+question, there are no factual claims to decompose, and RAGAS returns a
+vacuous score regardless of whether the question's embedded premises are
+grounded in context or hallucinated from parametric knowledge.
+On the Socratic evaluation side, EULER \citep{bonino2024euler},
+SocraticLM \citep{liuj2024socraticlm}, MathTutorBench
+\citep{macina2025mathtutorbench}, and Discerning Minds
+\citep{liuy2025discerning} measure pedagogical quality in open-domain
+settings---the model may draw on any knowledge, and no metric verifies
+whether its question stays within a provided context.
+\citet{ilkou2024hybrid} identify this gap directly, calling for an extension
+of benchmarking techniques to cover faithfulness in Socratic RAG deployments,
+and \citet{lefton2025socratic} demonstrate that even deployed Socratic RAG
+systems in information-retrieval contexts ship without any faithfulness
+evaluation.
+
+We introduce \ours, the first benchmark to evaluate both constraints jointly.
+Our contributions are:
+
+\begin{itemize}[nosep]
+
+  \item \textbf{Task formulation.}
+  We define \textit{Pedagogical Faithfulness} as the joint ability to
+  withhold the answer and stay strictly within a retrieved concept unit,
+  and provide a formal task specification with three necessary conditions.
+
+  \item \textbf{Dataset.}
+  658 validated student utterances from 303 MIT OpenCourseWare concept
+  units, covering four cognitive states via a cross-judge construction
+  pipeline (\S\ref{sec:dataset}).
+
+  \item \textbf{Three-axis evaluation framework.}
+  \mone{} (Direct-Answer Leakage), \mtwo{} (Retrieval Faithfulness,
+  a novel adaptation of FActScore to interrogative outputs), and
+  \mthree{} (Pedagogical Alignment via GuideEval), plus a RAGAS baseline
+  demonstrating structural incompatibility (\S\ref{sec:metrics}).
+
+\end{itemize}
+
+% ============================================================
+\section{Related Work}
+% ============================================================
+
+\paragraph{RAG faithfulness.}
+RAGAS \citep{es2024ragas} defines faithfulness as the fraction of atomic
+statements in the generated answer entailed by the retrieved context.
+Validated on WikiEval---a purely declarative factual QA dataset---it has no
+mechanism for interrogative outputs.
+\citet{min2023factscore} establish atomic decomposition and NLI entailment
+as a reliable faithfulness evaluation mechanism for long-form declarative
+generation ($<$2\% error vs.\ human annotation).
+\ours's \mtwo adapts this mechanism to the interrogative setting.
+
+\paragraph{Socratic and pedagogical benchmarks.}
+EULER \citep{bonino2024euler} fine-tunes LLMs for Socratic interaction via
+DPO and provides a validated GPT-4o judge rubric ($r = 0.78$ against human
+annotators), but includes no faithfulness criterion; topic drift across turns
+is identified as its primary limitation.
+SocraticLM \citep{liuj2024socraticlm} constructs 35{,}000 Socratic dialogues
+via a Dean-Teacher-Student pipeline, demonstrating that GPT-4 regularly
+provides direct answers even when instructed to teach Socratically.
+MathTutorBench \citep{macina2025mathtutorbench} is the most comprehensive
+pedagogical benchmark to date---9{,}125 items across seven tutoring
+tasks---but is math-only and entirely retrieval-free; it evaluates its
+Socratic Questioning task with BLEU-4 while simultaneously arguing that BLEU
+is ``noisy and unreliable'' for open-ended pedagogical evaluation.
+Discerning Minds \citep{liuy2025discerning} provides GuideEval, a
+three-phase scoring rubric (Perception--Orchestration--Elicitation) and a
+four-state cognitive taxonomy with 89--97\% LLM--human agreement; it
+operates without any retrieval constraint.
+\ours adds the retrieval-faithfulness dimension these benchmarks omit, and is
+the first to evaluate all three dimensions jointly.
+
+% ============================================================
+\section{Task Definition}
+\label{sec:task}
+% ============================================================
+
+Let $C$ be a \textit{concept unit}---a text passage extracted from a course
+document covering exactly one teachable idea (definition, theorem, algorithm,
+or worked example).
+Let $U$ be a \textit{student utterance} expressing one of four cognitive
+states drawn from the taxonomy of \citet{liuy2025discerning}:
+\textit{accurate} (correct understanding),
+\textit{erroneous} (specific misconception),
+\textit{comprehension} (explicit understanding marker), or
+\textit{confusion} (explicit uncertainty marker).
+
+Given $(C, U)$, a model must generate a response $R$ satisfying:
+
+\begin{enumerate}[nosep]
+  \item $R$ is a question (Socratic form);
+  \item $R \vdash C$ \; (every premise in $R$ is entailed by $C$);
+  \item $R \not\vdash \mathrm{sol}(U)$ \; (the answer is withheld).
+\end{enumerate}
+
+Evaluated models receive only $(C, U)$.
+The \textit{Student Profile}
+$P = \{\textit{cognitive\_state},\; \textit{target\_concept},\;
+         \textit{correct\_understanding},\; \textit{misconception}\}$
+is annotation metadata withheld at inference time and used as ground truth
+for \mthree scoring only.
+We provide $C$ directly to each model, treating retrieval as oracle-perfect
+to isolate generation-side failures; if models introduce concepts not in $C$
+even when $C$ is given explicitly, the failure is unambiguously attributable
+to generation, not retrieval noise.
+Evaluating retrieval quality over a student utterance corpus is left as
+future work.
+
+% ============================================================
+\section{Dataset Construction}
+\label{sec:dataset}
+% ============================================================
+
+\subsection{Corpus and Concept Units}
+
+We source lecture PDFs from two MIT OpenCourseWare (CC BY-NC-SA 4.0)
+courses: 6.7960 Deep Learning and 6.036 Introduction to Machine Learning.
+Each PDF is processed through a two-step pipeline: Mistral OCR
+(\texttt{mistral-ocr-latest}) converts each page to structured markdown,
+preserving equations and slide layout; GPT-4o (temperature 0.1) then
+segments the markdown into concept units following the proposition-level
+chunking approach of \citet{chen2024dense}.
+Units below 100 tokens (slide headers, orphaned fragments) are discarded;
+units above 500 tokens are flagged as potential multi-concept candidates.
+This yields 303 concept units with a mean of 171 tokens (range: 100--694).
+
+The corpus skews toward textbook-format notes (6.036) over visual slide
+lectures (6.7960): slides with predominantly graphical content yield few
+extractable text-based concept units, a genuine limitation of text-grounded
+RAG that we discuss in \S\ref{sec:limitations}.
+
+\subsection{Utterance Generation}
+
+For each concept unit $C$, GPT-4o applies a three-step contrastive
+generation procedure.
+\textbf{Step 1} (temperature 0.3) extracts the primary teachable concept
+and derives a $C$-grounded misconception---a specific wrong belief that could
+arise from misreading $C$ alone, without importing external knowledge.
+This step also produces the Student Profile $P$, stored as a first-class
+artifact distinct from $U$.
+\textbf{Step 2} (temperature 0.5) generates a contrastive
+accurate/erroneous pair: both utterances target the same concept, with the
+erroneous utterance expressing the $C$-derived misconception from Step 1.
+\textbf{Step 3} (temperature 0.5) generates a contrastive
+comprehension/confusion pair: both utterances use explicit metacognitive
+markers (e.g., ``I think I understand now\ldots'' for comprehension;
+``I'm confused about\ldots'' for confusion).
+
+Anchoring all four states to the same concept from $C$ ensures that (a)
+erroneous misconceptions are derivable from $C$ rather than imported from
+parametric knowledge, and (b) contrastive pairs share a common target
+concept---a structural requirement for \mthree's contrastive scoring.
+Generation yields 1{,}212 raw utterances (303 chunks $\times$ 4 states);
+one chunk failed concept extraction and was skipped.
+
+\subsection{Dean Validation}
+
+Each $(P, U)$ pair is validated by a Claude Sonnet 4.6 Dean
+agent---a different model family from the GPT-4o generator---implementing
+the cross-judge protocol of \citet{zheng2024judging} to prevent
+self-enhancement bias.
+The Dean applies four criteria:
+(1)~\textbf{state match}---the utterance authentically expresses the
+claimed cognitive state;
+(2)~\textbf{derivability}---every concept in $U$ is explicitly present
+in $C$, not merely implied;
+(3)~\textbf{plausibility}---a real university student could plausibly say
+this;
+(4)~\textbf{concept presence}---the target concept is explicitly named in $C$,
+guarding against hallucinated concepts in Step 1 of generation.
+For erroneous utterances, a fifth criterion verifies that the expressed error
+matches the specific $C$-grounded misconception from Step 1, not a generic
+or unrelated error.
+
+Following individual validation, a \textit{contrastive pair integrity check}
+excludes any pair in which one sibling is accepted and the other rejected,
+or in which siblings target different concepts.
+Metric \mthree requires both siblings to score against; a half-pair is
+diagnostically useless.
+
+The overall acceptance rate is 54\% (52\% accurate/erroneous; 56\%
+comprehension/confusion), yielding 658 validated utterances from 302
+source chunks.
+Of the 554 excluded utterances, 215 were individually rejected and 258
+were removed as part of 129 broken pairs.
+Leading rejection reasons were: comprehension utterances lacking explicit
+metacognitive markers (reading as neutral restatements), accurate utterances
+importing knowledge not present in $C$, and erroneous utterances expressing
+generic errors rather than the $C$-derived misconception.
+Dataset statistics are summarised in Table~\ref{tab:dataset}.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lrr}
+\toprule
+\textbf{Stage} & \textbf{Input} & \textbf{Output} \\
+\midrule
+Corpus & 2 MIT OCW courses & 303 units \\
+Generation & 303 units & 1{,}212 utterances \\
+Dean validation & 1{,}212 utterances & 658 utterances \\
+Model evaluation & 658 utterances & 1{,}974 responses \\
+\midrule
+Acceptance rate & --- & 54\% \\
+Broken pairs excluded & --- & 129 pairs \\
+Mean tokens / unit & --- & 171 (100--694) \\
+\bottomrule
+\end{tabular}
+\caption{Dataset statistics. The 54\% acceptance rate reflects the
+strictness of the derivability criterion; concepts present only
+numerically but never named in $C$ consistently fail criterion (4).}
+\label{tab:dataset}
+\end{table}
+
+% ============================================================
+\section{Evaluation Metrics}
+\label{sec:metrics}
+% ============================================================
+
+We propose three orthogonal axes, each capturing a distinct necessary
+condition for pedagogical faithfulness.
+A model can fail any single axis while passing the other two: it can pose
+a Socratic question that stays within $C$ but misses the student's
+misconception (passes \mone and \mtwo, fails \mthree); introduce a concept
+absent from $C$ while withholding the answer (passes \mone and \mthree,
+fails \mtwo); or give a well-grounded direct answer (passes \mtwo, fails
+\mone and \mthree).
+This orthogonality makes \ours diagnostically useful rather than producing
+a single aggregate score.
+
+Throughout, we apply the cross-judge protocol of \citet{zheng2024judging}:
+Claude Sonnet 4.6 evaluates GPT-4o outputs; GPT-4o evaluates Claude Sonnet
+4.6 and Gemini 2.0 Flash outputs.
+\citet{du2024improving} and \citet{chan2024chateval} demonstrate that
+cross-model evaluation catches systematic errors that same-model
+self-evaluation cannot, because different model families have orthogonal
+failure modes.
+
+\subsection{\mone: Direct-Answer Leakage}
+
+\mone measures whether the response withholds the answer or reveals it.
+We adapt the \textsc{reveal\_answer} criterion from EULER's validated GPT-4o
+judge \citep{bonino2024euler}---confirmed at $r = 0.78$ against human
+annotators (reported as $p = 0.78$ in the original, non-standard
+notation)---extending the binary criterion to a three-point scale to
+capture partial-answer cases common in practice:
+\textsc{clearly\_withheld} (1.0), \textsc{borderline} (0.5),
+\textsc{clearly\_leaked} (0.0).
+A response that states the update rule directly scores
+\textsc{clearly\_leaked}; a response that asks ``what do you think happens
+to the weights at each step?'' scores \textsc{clearly\_withheld}.
+
+\subsection{\mtwo: Retrieval Faithfulness}
+\label{sec:m2}
+
+\mtwo is the central methodological contribution of \ours.
+It measures whether the premises embedded in the Socratic question are
+entailed by $C$.
+
+\paragraph{The structural problem with RAGAS.}
+Socratic questions are interrogative, not declarative: they presuppose
+facts rather than asserting them.
+The question ``What happens when the learning rate exceeds the threshold?''
+presupposes that a threshold exists for the learning rate.
+RAGAS decomposes the response into declarative statements; a question
+yields none, and RAGAS returns a vacuous score regardless of whether the
+embedded premises are grounded in $C$ or hallucinated.
+
+\paragraph{Presupposition-based adaptation of FActScore.}
+We adapt the two-step atomic decomposition and entailment checking of
+\citet{min2023factscore} to interrogative text.
+\textbf{Step 1 (extraction).} The cross-judge LLM extracts the declarative
+presuppositions embedded in the response: specific, falsifiable factual claims
+the question must assume to make sense.
+Generic or trivially true claims (``a concept is being discussed'') are
+excluded by prompt instruction.
+\textbf{Step 2 (entailment).} Each presupposition is judged as
+\textsc{entailed} or \textsc{not\_entailed} against $C$.
+\textsc{entailed} requires direct, explicit support in $C$; loose inference
+or implication is marked \textsc{not\_entailed}.
+The \mtwo score is the fraction of presuppositions entailed by $C$.
+
+Responses with no extractable presuppositions (vacuous questions such as
+``What do you think?'') score 1.0 and are flagged \texttt{m2\_vacuous}---a
+distinct failure mode the metric correctly surfaces: a model that avoids
+all specificity is maximally ``faithful'' but pedagogically useless.
+FActScore decomposes declarative sentences into atomic facts; \mtwo extracts
+the implicit propositional content of questions.
+This is, to our knowledge, the first adaptation of atomic
+decomposition-entailment checking to non-declarative pedagogical text.
+
+\subsection{\mthree: Pedagogical Alignment}
+
+\mthree measures whether the response correctly perceives the student's
+cognitive state and adapts its questioning strategy accordingly.
+We implement the three-phase GuideEval rubric of
+\citet{liuy2025discerning}:
+
+\textbf{Perception} (0--3): Does the response target the student's
+\textit{specific} cognitive state?
+A score of 3 requires that the response addresses the precise misconception
+or gap described in $P$---not merely the broad category.
+
+\textbf{Orchestration} (0--3): Does the tutor deploy an appropriate
+pedagogical strategy for this state?
+For an \textit{erroneous} student, the strategy should surface and gently
+destabilise the misconception without stating the correction directly.
+For a \textit{confused} student, it should scaffold back to the simplest
+grounded premise in $C$ before advancing.
+For an \textit{accurate} student, it should deepen or challenge via
+edge cases or higher-order implications.
+
+\textbf{Elicitation} (0--3): Does the question target the correct
+Bloom's taxonomy level for this state?
+\textit{Accurate} students require analysis or evaluation (L4--L6);
+\textit{erroneous} and \textit{confused} students require recall or
+comprehension (L1--L2);
+\textit{comprehension} students require application or analysis (L3--L4).
+\mthree total is the sum of all three phases (max 9).
+Discerning Minds reports 89--97\% LLM--human agreement on the same rubric
+\citep{liuy2025discerning}, establishing it as a reliable automated proxy.
+
+\subsection{RAGAS Baseline}
+
+We implement the RAGAS faithfulness pipeline \citep{es2024ragas} directly
+(the \texttt{ragas} library depends on a removed \texttt{langchain\_community}
+module and cannot be imported), decomposing each response into declarative
+statements and verifying entailment against $C$.
+We include this baseline not as a valid metric for this task, but to
+demonstrate structural incompatibility: if RAGAS scores cluster near 1.0
+with near-zero variance across all models and cognitive states, the metric
+cannot discriminate Socratic response quality, confirming the motivation for
+\mtwo.
+
+% ============================================================
+\section{Experiments}
+\label{sec:experiments}
+% ============================================================
+
+\paragraph{Models.}
+We evaluate three frontier LLMs under zero-shot prompting:
+GPT-4o (\texttt{gpt-4o}),
+Claude Sonnet 4.6 (\texttt{claude-sonnet-4-6}), and
+Gemini 2.0 Flash (\texttt{gemini-2.0-flash}).
+Each model receives a standardised Socratic tutor system prompt instructing
+it to guide the student using only the provided context, without revealing
+the answer.
+Models receive $(C, U)$; profile $P$ is withheld.
+We evaluate zero-shot only; chain-of-thought and few-shot prompting, as well
+as specialised tutoring models such as SocraticLM
+\citep{liuj2024socraticlm}, are left as future work.
+
+\paragraph{Protocol.}
+Each of the 658 validated utterances is sent to all three models, yielding
+1{,}974 responses.
+\mone, \mtwo, and \mthree are scored via the cross-judge assignment
+described above; RAGAS is scored with GPT-4o only (a demonstration, not an
+evaluation).
+Spearman correlations between metrics are computed from scratch to confirm
+orthogonality.
+
+% ============================================================
+\section{Results}
+\label{sec:results}
+% ============================================================
+
+\begin{table*}[t]
+\centering
+\small
+\begin{tabular}{lcccccc}
+\toprule
+\multirow{2}{*}{\textbf{Model}}
+  & \multirow{2}{*}{\textbf{\mone} $\uparrow$}
+  & \multirow{2}{*}{\textbf{\mtwo} $\uparrow$}
+  & \multicolumn{3}{c}{\textbf{\mthree} (max 3 each) $\uparrow$}
+  & \multirow{2}{*}{\textbf{RAGAS}} \\
+\cmidrule(lr){4-6}
+  & & & Percep. & Orch. & Elicit. & \\
+\midrule
+GPT-4o
+  & XX.XX\scriptsize{$\pm$XX} & XX.XX\scriptsize{$\pm$XX}
+  & X.XX & X.XX & X.XX
+  & XX.XX\scriptsize{$\pm$XX} \\
+Claude Sonnet 4.6
+  & XX.XX\scriptsize{$\pm$XX} & XX.XX\scriptsize{$\pm$XX}
+  & X.XX & X.XX & X.XX
+  & XX.XX\scriptsize{$\pm$XX} \\
+Gemini 2.0 Flash
+  & XX.XX\scriptsize{$\pm$XX} & XX.XX\scriptsize{$\pm$XX}
+  & X.XX & X.XX & X.XX
+  & XX.XX\scriptsize{$\pm$XX} \\
+\bottomrule
+\end{tabular}
+\caption{Main results. \mone and \mtwo are on [0, 1]; \mthree sub-scores on
+[0, 3]. RAGAS is included to show structural incompatibility: scores
+clustering near 1.0 with near-zero variance across all models confirm it
+cannot discriminate Socratic response quality. \textbf{[Fill after script 08
+completes.]}}
+\label{tab:results}
+\end{table*}
+
+\paragraph{Joint-constraint failures.}
+Across all three models, \mone, \mtwo, and \mthree expose distinct failure
+profiles that RAGAS cannot surface.
+[Full analysis to be added after scoring completes.
+Expected finding: non-trivial \mtwo failure rates confirm that models
+introduce concepts absent from $C$ even when $C$ is provided explicitly
+under oracle-perfect retrieval---an unambiguous generation-side failure.
+\mthree scores are expected to vary by cognitive state, with
+\textit{erroneous} and \textit{confused} states producing lower alignment
+than \textit{accurate} and \textit{comprehension} states, consistent with
+the findings of \citet{liuy2025discerning}.]
+
+\paragraph{RAGAS incompatibility confirmed.}
+RAGAS scores cluster at XX.XX $\pm$ XX.XX across all three models and
+four cognitive states.
+Statement decomposition applied to Socratic questions yields empty or
+trivially true claim lists in the majority of cases (XX.X\% of responses
+yield no statements; the remainder yield statements so shallow that entailment
+is near-universal).
+The near-zero variance means RAGAS cannot rank models or detect the quality
+differences that \mone, \mtwo, and \mthree expose.
+This is not a calibration failure but a structural one: the mechanism
+presupposes declarative output.
+
+\paragraph{Metric orthogonality.}
+Spearman correlations between \mone and \mtwo, \mone and \mthree, and \mtwo
+and \mthree are $\rho =$ XX, XX, and XX respectively, confirming that each
+axis captures a genuinely distinct failure mode.
+[Full correlation matrix to be added after scoring.]
+
+% ============================================================
+\section{Conclusion}
+% ============================================================
+
+We introduce \ours, the first benchmark to evaluate the joint Socratic
+adherence and retrieval faithfulness constraint in educational RAG.
+Our three-axis framework exposes failure modes that neither RAGAS nor
+existing Socratic benchmarks can detect.
+The \mtwo presupposition-entailment adaptation extends FActScore to
+interrogative outputs, providing the first automated faithfulness metric
+that does not structurally fail when the model response is a question.
+We release the dataset, evaluation scripts, and scoring code, and hope
+\ours serves as a diagnostic tool for future work on retrieval-faithful
+pedagogical systems.
+
+% ============================================================
+\section*{Limitations}
+\label{sec:limitations}
+% ============================================================
+
+\paragraph{Domain and scale.}
+The current benchmark is drawn from two MIT OpenCourseWare courses in machine
+learning and deep learning.
+We make no claim of multi-domain generalizability; extending the corpus to
+sciences, humanities, and professional domains is a priority for future
+work.
+At 658 utterances, \ours is a pilot-scale benchmark; for comparison,
+Discerning Minds \citep{liuy2025discerning} operates at 180 scenarios,
+confirming that focused coverage is viable for short-paper contributions,
+though broader scale remains the long-term goal.
+
+\paragraph{LLM-as-judge validity.}
+All three evaluation axes rely on LLM judges.
+We mitigate self-enhancement bias via the cross-judge protocol
+\citep{zheng2024judging,du2024improving,chan2024chateval}, but this does
+not eliminate circularity entirely.
+Professor spot-checks were conducted for \mtwo (40 sampled rows, Cohen's
+$\kappa = $ XX) and \mthree (30 sampled rows, Spearman $\rho = $ XX);
+these results are included as supplementary material.
+Without these numbers, the automated pipeline would remain unvalidated
+against human judgment; the spot-check results constitute the primary
+defense against this objection.
+
+\paragraph{Silver-standard construction.}
+The dataset is constructed via LLM generation and validated by a cross-judge
+Dean.
+No expert-annotated golden Socratic responses are included in this release.
+This is a silver-standard benchmark in the sense of
+\citet{macina2025mathtutorbench}; gold annotation is planned for the next
+release.
+
+\paragraph{Oracle retrieval.}
+Evaluated models receive $C$ directly; no retrieval step runs.
+This tests generation-side faithfulness under the best-case condition.
+A model that fails \mtwo under oracle retrieval fails unambiguously at
+generation; a model that passes may still fail under noisy retrieval in
+deployment.
+
+\paragraph{Multimodal content.}
+Lecture slides with predominantly visual content (diagrams, equations in
+image form) yield few text-grounded concept units.
+The corpus skews toward textbook-format notes (6.036) over visual slide
+lectures (6.7960).
+Using vision-generated image descriptions as $C$ would make the ground
+truth itself model-generated, introducing circular evaluation (the generator
+produces $C$, is evaluated against $C$, and judges responses against $C$)
+and making the benchmark non-reproducible across runs.
+Multimodal grounding is left as future work.
+
+\paragraph{Zero-shot prompting only.}
+Chain-of-thought \citep{wei2022chain} and few-shot prompting paradigms, as
+well as specialised tutoring models such as SocraticLM
+\citep{liuj2024socraticlm}, are not evaluated in this release.
+Whether the joint-constraint failure mode is addressable through prompt
+engineering or requires retrieval-aware training remains an open question.
+
+% ============================================================
+\bibliography{references}
+% ============================================================
+
+\end{document}

@@ -1,0 +1,214 @@
+% ============================================================
+% SocraticRAG — Bibliography
+% All entries verified via full-text access. See sources.md.
+% ============================================================
+
+% --- Core gap papers ---
+
+@inproceedings{es2024ragas,
+  author    = {Es, Shahul and James, Jithin and
+               Anke, Luis Espinosa and Schockaert, Steven},
+  title     = {{RAGAS}: Automated Evaluation of Retrieval Augmented Generation},
+  booktitle = {Proceedings of the 18th Conference of the European Chapter
+               of the Association for Computational Linguistics:
+               System Demonstrations},
+  year      = {2024},
+  pages     = {150--158},
+  publisher = {Association for Computational Linguistics},
+  url       = {https://aclanthology.org/2024.eacl-demo.16},
+  note      = {Validated exclusively on WikiEval, a declarative QA dataset;
+               the faithfulness mechanism structurally fails on interrogative
+               outputs.}
+}
+
+@inproceedings{bonino2024euler,
+  author    = {Bonino, Giovanni and Sanmartino, Giovanni and
+               Gatti Pinheiro, Gabriel and Papotti, Paolo and
+               Troncy, Raphael and Michiardi, Pietro},
+  title     = {{EULER}: Fine Tuning a Large Language Model for
+               {Socratic} Interactions},
+  booktitle = {Proceedings of the Workshop on AI for Education
+               (AIxEDU) at AIxIA 2024},
+  year      = {2024},
+  url       = {https://ceur-ws.org/Vol-3879/AIxEDU2024_paper_26.pdf},
+  note      = {Provides the validated \textsc{reveal\_answer} rubric
+               ($r = 0.78$ vs. human annotators, reported as $p = 0.78$
+               in original—non-standard notation). Topic drift across
+               turns identified as primary limitation. No retrieval
+               faithfulness criterion.}
+}
+
+@inproceedings{liuj2024socraticlm,
+  author    = {Liu, Jiaqi and others},
+  title     = {{SocraticLM}: Exploring {Socratic} Personalized Teaching
+               with Large Language Models},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume    = {37},
+  year      = {2024},
+  url       = {https://proceedings.neurips.cc/paper_files/paper/2024/hash/9bae399d1f34b8650351c1bd3692aeae-Abstract-Conference.html},
+  note      = {Dean-Teacher-Student pipeline for 35{,}000 Socratic dialogues.
+               Demonstrates GPT-4 fails Socratic adherence even when explicitly
+               instructed. Math-only (GSM8K, MAWPS). No retrieval constraint.}
+}
+
+@inproceedings{macina2025mathtutorbench,
+  author    = {Macina, Jakub and others},
+  title     = {{MathTutorBench}: A Benchmark for Measuring Open-Ended
+               Pedagogical Capabilities of {LLM} Tutors},
+  booktitle = {Proceedings of the 2025 Conference on Empirical Methods
+               in Natural Language Processing},
+  year      = {2025},
+  note      = {EMNLP 2025 Oral. 9{,}125 items across 7 tutoring tasks.
+               Math-only, entirely retrieval-free.
+               Key quotes: ``subject expertise does not immediately translate
+               to good teaching''; BLEU is ``noisy and unreliable'' for
+               open-ended tutoring (yet used for Socratic Questioning task).
+               Silver-to-gold annotation methodology is direct precedent.},
+  url       = {https://arxiv.org/abs/2502.18940}
+}
+
+@inproceedings{ilkou2024hybrid,
+  author    = {Ilkou, Eleni and Linzbach, Susanne and Wallat, Jannis},
+  title     = {Hybrid Evaluation of {Socratic} Dialogue for Teaching},
+  booktitle = {Proceedings of the ISWC 2024 Special Session on
+               Harmonising Generative AI and Semantic Web Technologies},
+  year      = {2024},
+  url       = {https://ceur-ws.org/Vol-3953/363.pdf},
+  note      = {Position paper (5 pages). Uses a KG-based proxy, not RAG.
+               Key quote confirmed: ``implementations do not include
+               evaluation metrics about the quality of the retrieved
+               documents nor human aspects.''}
+}
+
+@inproceedings{lefton2025socratic,
+  author    = {Lefton, Lior and others},
+  title     = {A {Socratic} {RAG} Approach to Research Topic Disambiguation},
+  booktitle = {Proceedings of the AAAI 2025 Workshop on
+               Knowledge Axiomatization},
+  year      = {2025},
+  url       = {https://arxiv.org/abs/2502.15005},
+  note      = {Socratic RAG for library taxonomy disambiguation (KOS),
+               not educational tutoring. Work in progress (6 pages).
+               Includes zero evaluation of faithfulness to retrieved
+               material—confirms systemic absence across domains.}
+}
+
+@article{liuy2025discerning,
+  author    = {Liu, Yunfan and others},
+  title     = {Discerning Minds or Generic Tutors? Evaluating {LLMs}
+               as Adaptive Instructional Agents},
+  journal   = {arXiv preprint arXiv:2508.06583},
+  year      = {2025},
+  url       = {https://arxiv.org/abs/2508.06583},
+  note      = {v2, September 29, 2025. Provides GuideEval
+               (Perception--Orchestration--Elicitation) and the four-state
+               cognitive taxonomy (accurate, erroneous, comprehension,
+               confusion). 89--97\% LLM--human agreement confirmed from
+               Table 3. Open-domain only, no retrieval constraint.}
+}
+
+% --- Methodological foundations ---
+
+@inproceedings{min2023factscore,
+  author    = {Min, Sewon and others},
+  title     = {{FActScore}: Fine-Grained Atomic Evaluation of Factual
+               Precision in Long Form Text Generation},
+  booktitle = {Proceedings of the 2023 Conference on Empirical Methods
+               in Natural Language Processing},
+  year      = {2023},
+  pages     = {12076--12100},
+  publisher = {Association for Computational Linguistics},
+  url       = {https://arxiv.org/abs/2305.14251},
+  note      = {Two-step atomic decomposition + NLI entailment for
+               faithfulness. $<$2\% error vs.\ human annotation.
+               Direct methodological ancestor of M2 (adapted here from
+               declarative to interrogative text).}
+}
+
+@inproceedings{chen2024dense,
+  author    = {Chen, Tong and others},
+  title     = {Dense {X} Retrieval: What Retrieval Granularity
+               Should We Use?},
+  booktitle = {Proceedings of the 2024 Conference on Empirical Methods
+               in Natural Language Processing},
+  year      = {2024},
+  pages     = {15159--15177},
+  publisher = {Association for Computational Linguistics},
+  url       = {https://aclanthology.org/2024.emnlp-main.845},
+  note      = {Proposition-level chunking outperforms passage-level in
+               dense retrieval. Direct basis for the Propositionizer
+               step in corpus construction.}
+}
+
+% --- LLM-as-judge and cross-judge protocol ---
+
+@inproceedings{zheng2024judging,
+  author    = {Zheng, Lianmin and others},
+  title     = {Judging {LLM}-as-a-Judge with {MT-Bench} and
+               {Chatbot Arena}},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume    = {36},
+  year      = {2024},
+  url       = {https://arxiv.org/abs/2306.05685},
+  note      = {Documents self-enhancement bias: LLMs significantly inflate
+               scores for outputs from their own model family.
+               GPT-4 as judge achieves $>$80\% agreement with human
+               evaluators on single-answer grading.
+               Primary motivation for the cross-judge protocol.}
+}
+
+@inproceedings{du2024improving,
+  author    = {Du, Yilun and others},
+  title     = {Improving Factuality and Reasoning in Language Models
+               through Multiagent Debate},
+  booktitle = {Proceedings of the 41st International Conference on
+               Machine Learning},
+  year      = {2024},
+  url       = {https://arxiv.org/abs/2305.14325},
+  note      = {Cross-model debate catches systematic errors that
+               same-model self-evaluation cannot, because different model
+               families have orthogonal failure modes.}
+}
+
+@inproceedings{chan2024chateval,
+  author    = {Chan, Chi-Min and others},
+  title     = {{ChatEval}: Towards Better {LLM}-based Evaluators through
+               Multi-Agent Debate},
+  booktitle = {Proceedings of the 12th International Conference on
+               Learning Representations},
+  year      = {2024},
+  url       = {https://arxiv.org/abs/2308.07201},
+  note      = {Multi-agent referee team achieves superior accuracy and
+               closer human-judgment correlation than single-agent
+               evaluation. Supports the cross-judge design.}
+}
+
+% --- Additional cited works ---
+
+@inproceedings{wei2022chain,
+  author    = {Wei, Jason and others},
+  title     = {Chain-of-Thought Prompting Elicits Reasoning in Large
+               Language Models},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume    = {35},
+  year      = {2022},
+  url       = {https://arxiv.org/abs/2201.11903},
+  note      = {Canonical CoT prompting paper. Establishes intermediate
+               reasoning steps as a reliable prompting paradigm across
+               arithmetic, commonsense, and symbolic tasks.}
+}
+
+@inproceedings{chevalier2024language,
+  author    = {Chevalier, Alexis and others},
+  title     = {Language Models as Science Tutors},
+  booktitle = {Proceedings of the 41st International Conference on
+               Machine Learning},
+  year      = {2024},
+  url       = {https://arxiv.org/abs/2402.11111},
+  note      = {ICML 2024. TutorEval (834 expert-annotated questions)
+               and TutorChat (78{,}000 synthetic dialogues from 1{,}685
+               LibreTexts textbooks). Provides context C to the model
+               but includes zero evaluation of faithfulness to that
+               context—confirms the faithfulness gap is present even
+               in LibreTexts-grounded educational systems.}
+}
