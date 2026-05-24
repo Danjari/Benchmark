@@ -74,6 +74,54 @@
 
 ---
 
+## Competitive Landscape & Submission Strategy
+
+### Honest Assessment vs. Accepted 2025 Papers
+
+We compared against five accepted 2025 ACL/EMNLP papers. Key findings:
+
+**Our genuine strengths:**
+- Novel problem statement: joint constraint evaluation (Socratic + faithful) is unaddressed in the literature
+- M2 presupposition adaptation of FActScore to interrogative outputs is a real methodological contribution
+- RAGAS incompatibility demonstration is a concrete, testable claim
+- Educational AI application is timely
+
+**Four structural weaknesses reviewers will name:**
+
+**1. Scale gap.**
+MEBench (accepted long paper): 4,780 items, 241 topics, diverse domains. SocraticRAG: 658 items, 2 MIT OCW courses, one domain (ML/DL). For a benchmark claiming to measure a general failure mode, this is a significant vulnerability. Mitigation: scope the claim explicitly ("initial benchmark in ML/DL educational content; multi-domain extension is future work").
+
+**2. Circular LLM evaluation.**
+Every accepted benchmark paper avoids LLM-as-judge for its main evaluation metric. MEBench uses SQL-derived verifiable answers. The Self-Consistent paper uses NLI + 15 stochastic samples. Our M1, M2, M3 are all LLM judges. Without human validation numbers (Cohen's κ, Spearman ρ), reviewers will correctly say the pipeline is circular. **Professor spot checks are not optional — they are the paper's main defense against this objection.**
+
+**3. Too many contributions at medium depth.**
+Every successful short paper in the sample does one thing well (one definition, one method, one finding). SocraticRAG is presenting: task definition + dataset pipeline + 3 metrics + RAGAS baseline + experiments. More contributions = more attack surface. Mitigation: frame M2 as the central contribution; M1 and M3 are supporting axes.
+
+**4. No gold labels / ground truth.**
+MEBench has SQL-verified answers. We have no ground truth for what a "good" Socratic response looks like — no expert-annotated Golden Response R₀ₙₑˣ yet. Mitigation: be explicit in Limitations that this is a silver-standard benchmark; professor spot checks provide partial validation.
+
+### Recommended Paper Strategy
+
+**Target: short paper (4 pages) with M2 as the central contribution.**
+
+The story that fits in 4 pages and is defensible:
+> "Existing RAG faithfulness metrics (RAGAS) structurally fail on Socratic question outputs because they require declarative statements. We propose a presupposition-based adaptation (M2) that handles interrogative outputs, show it produces meaningful score variance (unlike RAGAS which clusters near 1.0), and validate it against human judgment (Cohen's κ = X). M1 and M3 provide supporting evidence of the joint constraint failure mode."
+
+The RAGAS near-1.0 clustering table is the empirical anchor of the paper. If RAGAS scores ≈ 0.98 ± 0.02 while M2 shows real spread across models and states, that one comparison tells the whole story.
+
+**If going long paper:** the human validation gap is the main risk. Need κ and ρ numbers from professor before submission. Without them, reviewers have an easy rejection reason.
+
+### Critical Pre-Submission Checklist
+
+- [ ] Professor spot check M2 (40 rows): compute Cohen's κ — report in Evaluation Metrics section
+- [ ] Professor spot check M3 (30 rows): compute Spearman ρ — target > 0.7, report in Evaluation Metrics
+- [ ] M2 critical checkpoint: if >25% responses flag unentailed presuppositions → confirms core claim
+- [ ] RAGAS clustering confirmed: scores ≈ 1.0 with near-zero variance → structural incompatibility demonstrated
+- [ ] One sentence in Task Definition: oracle-retrieval defense
+- [ ] Limitations section: scale (2 courses, 1 domain), no gold labels, LLM judge limitations, stochastic reproducibility
+
+---
+
 ## Task Definition Section
 
 ### Defending Oracle-Perfect Retrieval (Reviewer Objection)
