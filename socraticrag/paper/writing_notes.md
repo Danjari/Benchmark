@@ -74,6 +74,40 @@
 
 ---
 
+## Task Definition Section
+
+### Defending Oracle-Perfect Retrieval (Reviewer Objection)
+
+**The vulnerability:** In a real Socratic RAG system the flow is:
+
+```
+student query → retrieval (find relevant chunk) → LLM generates Socratic response using C
+```
+
+The pipeline skips the first arrow. C is handed directly to the model — no retrieval step runs. This means we are testing **context adherence**, not retrieval + generation jointly.
+
+**The defense (two-part argument):**
+
+**1. We evaluate the component that has no existing benchmark.**
+
+Decompose RAG into retrieval and generation. Retrieval quality (did the system find the right chunk?) is already addressed by existing metrics — recall, precision, RAGAS context metrics. What has *no* existing benchmark is the generation step for pedagogical outputs: given C, does the model generate a Socratic response that stays bounded by C while guiding the student? That is the gap SocraticRAG fills. Evaluating both retrieval and generation in one paper would dilute the contribution and conflate two distinct failure modes.
+
+**2. Providing C directly is the right experimental design, not a shortcut.**
+
+By handing C to the model directly we test under *perfect retrieval* — the best-case condition. If models fail M2 (introduce concepts not in C) even when C is given to them explicitly, the failure is unambiguously attributable to generation, not to retrieval noise. This is a *stronger* finding than failure under noisy retrieval because it eliminates a confound. End-to-end retrieval evaluation would make it impossible to isolate where the system breaks down.
+
+**3. The name "SocraticRAG" still holds.**
+
+The name refers to the *system type* being evaluated — LLM-based tutoring systems that use RAG as their knowledge grounding mechanism. The benchmark stress-tests the generation component of those systems. The name is the deployment context, not a claim that the benchmark itself runs a retrieval step.
+
+**One-sentence fix for the Task Definition section (add where (C, U) → R is defined):**
+
+> "We provide C directly to evaluated models, treating retrieval as oracle-perfect to isolate generation-side failures; evaluating retrieval quality over a student utterance corpus is left as future work."
+
+This single sentence preempts the reviewer objection. Place it immediately after the formal input notation.
+
+---
+
 ## Limitations Section
 
 ### Visual slide content and text-grounded RAG

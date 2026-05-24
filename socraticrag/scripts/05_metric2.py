@@ -272,12 +272,16 @@ async def main():
     print(f"{len(responses)} responses. {len(remaining)} remaining. 2 API calls each.")
 
     semaphore = asyncio.Semaphore(5)
+    batch_size = 5
 
-    for row in tqdm(remaining, desc="M2 scoring"):
-        result = await score_response(row, semaphore)
+    for i in tqdm(range(0, len(remaining), batch_size), desc="M2 scoring"):
+        batch = remaining[i:i + batch_size]
+        results = await asyncio.gather(*[score_response(row, semaphore) for row in batch])
         with open(TEMP_FILE, "a") as f:
-            f.write(json.dumps(result) + "\n")
-        done.add(row["response_id"])
+            for result in results:
+                f.write(json.dumps(result) + "\n")
+        for row, result in zip(batch, results):
+            done.add(row["response_id"])
         with open(CHECKPOINT_FILE, "w") as f:
             json.dump(list(done), f)
 
