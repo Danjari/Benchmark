@@ -21,14 +21,25 @@ Human spot-check (CRITICAL — required before reporting M2):
   whether the entailment verdicts match their judgment.
   Compute Cohen's κ and report in the paper.
   Export helper: python3 scripts/05_metric2.py --spot-check 40
+
+Failure handling:
+  All API errors are retried up to 6 times with exponential backoff.
+  Rows where either judge call fails all retries are written with
+  judge_failed=True and excluded from statistics. Note: a vacuous result
+  (empty presuppositions after a successful extraction call) is NOT a
+  failure — it is a legitimate outcome. Run --reprocess-failed to reset
+  judge-failed rows. Script aborts if 3 consecutive batches have 100%
+  judge failure (API down).
 """
 
 import os
 import re
+import sys
 import json
 import asyncio
 import argparse
 import random
+import statistics
 from pathlib import Path
 from openai import AsyncOpenAI
 from anthropic import AsyncAnthropic
@@ -45,6 +56,8 @@ OUTPUT_FILE = Path("data/scores_m2.jsonl")
 CHECKPOINT_FILE = Path("data/.scores_m2_checkpoint.json")
 TEMP_FILE = Path("data/.scores_m2_temp.jsonl")
 SPOT_CHECK_FILE = Path("data/m2_spot_check.jsonl")
+
+ABORT_AFTER_CONSECUTIVE = 3
 
 JUDGE_SYSTEM = (
     "You are a strict dataset quality evaluator for an AI tutoring benchmark. "
@@ -116,11 +129,13 @@ async def call_openai_judge(prompt: str, semaphore: asyncio.Semaphore, max_token
                 if "429" in err:
                     match = re.search(r"try again in (\d+(?:\.\d+)?)s", err)
                     wait = float(match.group(1)) + 1.0 if match else 2 ** attempt
-                    await asyncio.sleep(wait)
                 else:
-                    print(f"  [openai judge] {e}")
-                    return None
-    return None
+                    wait = 2 ** attempt
+                print(f"\n  [openai judge] attempt {attempt + 1}/6: {type(e).__name__}: {e}")
+                if attempt < 5:
+                    await asyncio.sleep(wait)
+        print("\n  [openai judge] all 6 attempts failed.")
+        return None
 
 
 async def call_anthropic_judge(prompt: str, semaphore: asyncio.Semaphore, max_tokens: int = 512) -> dict | None:
@@ -139,16 +154,16 @@ async def call_anthropic_judge(prompt: str, semaphore: asyncio.Semaphore, max_to
                 return json.loads(raw)
             except Exception as e:
                 err = str(e)
+                wait = 2 ** attempt
                 if "429" in err or "rate_limit" in err or "overloaded" in err:
-                    wait = 2 ** attempt
                     match = re.search(r"try again in (\d+(?:\.\d+)?)s", err)
                     if match:
                         wait = float(match.group(1)) + 1.0
+                print(f"\n  [anthropic judge] attempt {attempt + 1}/6: {type(e).__name__}: {e}")
+                if attempt < 5:
                     await asyncio.sleep(wait)
-                else:
-                    print(f"  [anthropic judge] {e}")
-                    return None
-    return None
+        print("\n  [anthropic judge] all 6 attempts failed.")
+        return None
 
 
 async def call_judge(prompt: str, judge_model: str, semaphore: asyncio.Semaphore, max_tokens: int = 512) -> dict | None:
@@ -167,9 +182,26 @@ async def score_response(row: dict, semaphore: asyncio.Semaphore) -> dict:
         semaphore,
         max_tokens=512,
     )
-    presuppositions = extraction.get("presuppositions", []) if extraction else []
+
+    if extraction is None:
+        return {
+            "response_id": row["response_id"],
+            "utterance_id": row["utterance_id"],
+            "chunk_id": row["chunk_id"],
+            "model": row["model"],
+            "cognitive_state": row["profile"]["cognitive_state"],
+            "judge_model": judge_model,
+            "m2_presuppositions": [],
+            "m2_verdicts": [],
+            "m2_score": None,
+            "m2_vacuous": False,
+            "judge_failed": True,
+        }
+
+    presuppositions = extraction.get("presuppositions", [])
     presuppositions = [p for p in presuppositions if isinstance(p, str) and p.strip()]
 
+    # Vacuous is a legitimate outcome — no presuppositions to check
     if not presuppositions:
         return {
             "response_id": row["response_id"],
@@ -182,6 +214,7 @@ async def score_response(row: dict, semaphore: asyncio.Semaphore) -> dict:
             "m2_verdicts": [],
             "m2_score": 1.0,
             "m2_vacuous": True,
+            "judge_failed": False,
         }
 
     # Step 2: entailment check
@@ -196,9 +229,23 @@ async def score_response(row: dict, semaphore: asyncio.Semaphore) -> dict:
         semaphore,
         max_tokens=256,
     )
-    verdicts = entailment.get("verdicts", []) if entailment else []
 
-    # Align lengths if LLM returned wrong count
+    if entailment is None:
+        return {
+            "response_id": row["response_id"],
+            "utterance_id": row["utterance_id"],
+            "chunk_id": row["chunk_id"],
+            "model": row["model"],
+            "cognitive_state": row["profile"]["cognitive_state"],
+            "judge_model": judge_model,
+            "m2_presuppositions": presuppositions,
+            "m2_verdicts": [],
+            "m2_score": None,
+            "m2_vacuous": False,
+            "judge_failed": True,
+        }
+
+    verdicts = entailment.get("verdicts", [])
     if len(verdicts) < len(presuppositions):
         verdicts += ["NOT_ENTAILED"] * (len(presuppositions) - len(verdicts))
     verdicts = verdicts[:len(presuppositions)]
@@ -218,7 +265,37 @@ async def score_response(row: dict, semaphore: asyncio.Semaphore) -> dict:
         "m2_verdicts": verdicts,
         "m2_score": score,
         "m2_vacuous": False,
+        "judge_failed": False,
     }
+
+
+def reprocess_failed():
+    """Reset checkpoint for judge-failed rows so they are re-scored on next run."""
+    if not TEMP_FILE.exists() or not CHECKPOINT_FILE.exists():
+        print("No temp file or checkpoint found. Run the full scoring first.")
+        return
+
+    all_rows = []
+    with open(TEMP_FILE) as f:
+        for line in f:
+            all_rows.append(json.loads(line))
+
+    failed = [r for r in all_rows if r.get("judge_failed")]
+    succeeded = [r for r in all_rows if not r.get("judge_failed")]
+
+    if not failed:
+        print("No failed rows found. Nothing to reprocess.")
+        return
+
+    print(f"Found {len(failed)} failed rows. Removing from checkpoint and temp file.")
+    with open(TEMP_FILE, "w") as f:
+        for row in succeeded:
+            f.write(json.dumps(row) + "\n")
+    with open(CHECKPOINT_FILE, "w") as f:
+        json.dump([r["response_id"] for r in succeeded], f)
+
+    print(f"{len(succeeded)} valid rows preserved. {len(failed)} rows will be re-scored on next run.")
+    print("Run: python3 scripts/05_metric2.py")
 
 
 def export_spot_check(n: int = 40):
@@ -232,10 +309,11 @@ def export_spot_check(n: int = 40):
         for line in f:
             scores.append(json.loads(line))
 
-    # Stratify by model and cognitive_state
+    valid = [s for s in scores if not s.get("judge_failed")]
+
     from collections import defaultdict
     buckets: dict = defaultdict(list)
-    for s in scores:
+    for s in valid:
         key = (s["model"], s["cognitive_state"])
         buckets[key].append(s)
 
@@ -252,7 +330,6 @@ def export_spot_check(n: int = 40):
 
     print(f"Exported {min(len(sample), n)} rows to {SPOT_CHECK_FILE}")
     print("Send this file to professor for verification of presuppositions and verdicts.")
-    print("For each row, professor should judge: are the presuppositions correct? Are the verdicts correct?")
 
 
 async def main():
@@ -273,14 +350,29 @@ async def main():
 
     semaphore = asyncio.Semaphore(5)
     batch_size = 5
+    total_failed = 0
+    consecutive_all_failed = 0
 
     for i in tqdm(range(0, len(remaining), batch_size), desc="M2 scoring"):
         batch = remaining[i:i + batch_size]
         results = await asyncio.gather(*[score_response(row, semaphore) for row in batch])
+
+        batch_failed = sum(1 for r in results if r.get("judge_failed"))
+        total_failed += batch_failed
+        if batch_failed:
+            print(f"\n  ⚠  {batch_failed}/{len(batch)} judge failures in this batch ({total_failed} total).")
+
+        consecutive_all_failed = consecutive_all_failed + 1 if batch_failed == len(batch) else 0
+        if consecutive_all_failed >= ABORT_AFTER_CONSECUTIVE:
+            print(f"\n❌ ABORTING: {ABORT_AFTER_CONSECUTIVE} consecutive batches with 100% judge failure.")
+            print("   Check your API key, quota, and network. Fix the issue and rerun.")
+            print("   Run: python3 scripts/05_metric2.py --reprocess-failed after fixing.")
+            sys.exit(1)
+
         with open(TEMP_FILE, "a") as f:
             for result in results:
                 f.write(json.dumps(result) + "\n")
-        for row, result in zip(batch, results):
+        for row in batch:
             done.add(row["response_id"])
         with open(CHECKPOINT_FILE, "w") as f:
             json.dump(list(done), f)
@@ -294,24 +386,28 @@ async def main():
         for row in all_scores:
             f.write(json.dumps(row) + "\n")
 
-    print(f"\nSaved {len(all_scores)} M2 scores to {OUTPUT_FILE}")
+    valid = [s for s in all_scores if not s.get("judge_failed")]
+    failed_rows = [s for s in all_scores if s.get("judge_failed")]
 
-    import statistics
+    print(f"\nSaved {len(all_scores)} M2 scores to {OUTPUT_FILE}")
+    if failed_rows:
+        print(f"⚠  {len(failed_rows)} rows have judge_failed=True — excluded from statistics.")
+        print("   Run: python3 scripts/05_metric2.py --reprocess-failed to reset them.")
+
     by_model: dict[str, list] = {}
-    vacuous = [s for s in all_scores if s.get("m2_vacuous")]
-    for s in all_scores:
+    vacuous = [s for s in valid if s.get("m2_vacuous")]
+    for s in valid:
         by_model.setdefault(s["model"], []).append(s["m2_score"])
 
-    print("\nM2 mean score by model:")
+    print("\nM2 mean score by model (valid rows only):")
     for m, scores in sorted(by_model.items()):
         mean = sum(scores) / len(scores)
         sd = statistics.stdev(scores) if len(scores) > 1 else 0.0
         print(f"  {m}: {mean:.3f} ± {sd:.3f}")
 
-    print(f"\nVacuous responses (no presuppositions, score=1.0): {len(vacuous)} ({100*len(vacuous)/len(all_scores):.1f}%)")
-
-    not_entailed = [s for s in all_scores if not s.get("m2_vacuous") and s["m2_score"] < 1.0]
-    print(f"Responses with ≥1 unentailed presupposition: {len(not_entailed)} ({100*len(not_entailed)/len(all_scores):.1f}%)")
+    print(f"\nVacuous responses (no presuppositions, score=1.0): {len(vacuous)} ({100*len(vacuous)/len(valid):.1f}%)" if valid else "")
+    not_entailed = [s for s in valid if not s.get("m2_vacuous") and s["m2_score"] < 1.0]
+    print(f"Responses with ≥1 unentailed presupposition: {len(not_entailed)} ({100*len(not_entailed)/len(valid):.1f}%)" if valid else "")
 
     print("\n⚠  Human spot-check required before reporting M2.")
     print("   Run: python3 scripts/05_metric2.py --spot-check 40")
@@ -322,9 +418,13 @@ async def main():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--spot-check", type=int, metavar="N", help="Export N rows for human spot-check")
+    parser.add_argument("--reprocess-failed", action="store_true",
+                        help="Reset checkpoint for judge-failed rows so they are re-scored on next run")
     args = parser.parse_args()
 
-    if args.spot_check:
+    if args.reprocess_failed:
+        reprocess_failed()
+    elif args.spot_check:
         export_spot_check(args.spot_check)
     else:
         asyncio.run(main())
