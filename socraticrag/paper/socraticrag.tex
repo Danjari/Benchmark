@@ -98,7 +98,9 @@ whether its question stays within a provided context.
 of benchmarking techniques to cover faithfulness in Socratic RAG deployments,
 and \citet{lefton2025socratic} demonstrate that even deployed Socratic RAG
 systems in information-retrieval contexts ship without any faithfulness
-evaluation.
+evaluation; \citet{chevalier2024language} similarly ground tutoring responses
+in retrieved textbook content but include no metric verifying whether
+responses stay within it.
 
 We introduce \ours, the first benchmark to evaluate both constraints jointly.
 Our contributions are:
@@ -203,7 +205,7 @@ future work.
 We source lecture PDFs from two MIT OpenCourseWare (CC BY-NC-SA 4.0)
 courses: 6.7960 Deep Learning and 6.036 Introduction to Machine Learning.
 Each PDF is processed through a two-step pipeline: Mistral OCR
-(\texttt{mistral-ocr-latest}) converts each page to structured markdown,
+(\texttt{mistral-ocr-latest})\footnote{\url{https://mistral.ai/news/mistral-ocr}} converts each page to structured markdown,
 preserving equations and slide layout; GPT-4o (temperature 0.1) then
 segments the markdown into concept units following the proposition-level
 chunking approach of \citet{chen2024dense}.
@@ -318,10 +320,11 @@ a single aggregate score.
 Throughout, we apply the cross-judge protocol of \citet{zheng2024judging}:
 Claude Sonnet 4.6 evaluates GPT-4o outputs; GPT-4o evaluates Claude Sonnet
 4.6 and Gemini 2.0 Flash outputs.
-\citet{du2024improving} and \citet{chan2024chateval} demonstrate that
-cross-model evaluation catches systematic errors that same-model
-self-evaluation cannot, because different model families have orthogonal
-failure modes.
+\citet{chan2024chateval} show that multi-agent LLM evaluators achieve
+closer human-judgement correlation than single-agent evaluation;
+\citet{du2024improving} show that cross-agent debate improves factual
+accuracy beyond self-verification; together these support using
+cross-family judges to reduce single-model systematic bias.
 
 \subsection{\mone: Direct-Answer Leakage}
 
@@ -398,7 +401,7 @@ For an \textit{accurate} student, it should deepen or challenge via
 edge cases or higher-order implications.
 
 \textbf{Elicitation} (0--3): Does the question target the correct
-Bloom's taxonomy level for this state?
+Bloom's taxonomy level \citep{krathwohl2002revision} for this state?
 \textit{Accurate} students require analysis or evaluation (L4--L6);
 \textit{erroneous} and \textit{confused} students require recall or
 comprehension (L1--L2);
@@ -426,9 +429,9 @@ cannot discriminate Socratic response quality, confirming the motivation for
 
 \paragraph{Models.}
 We evaluate three frontier LLMs under zero-shot prompting:
-GPT-4o (\texttt{gpt-4o}),
-Claude Sonnet 4.6 (\texttt{claude-sonnet-4-6}), and
-Gemini 2.0 Flash (\texttt{gemini-2.0-flash}).
+GPT-4o \citep{openai2023gpt4} (\texttt{gpt-4o}),
+Claude Sonnet 4.6\footnote{\url{https://www.anthropic.com/claude}} (\texttt{claude-sonnet-4-6}), and
+Gemini 2.0 Flash \citep{geminiteam2024gemini} (\texttt{gemini-2.0-flash}).
 Each model receives a standardised Socratic tutor system prompt instructing
 it to guide the student using only the provided context, without revealing
 the answer.
