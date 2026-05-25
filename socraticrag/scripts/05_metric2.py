@@ -311,11 +311,27 @@ def export_spot_check(n: int = 40):
 
     valid = [s for s in scores if not s.get("judge_failed")]
 
+    # Load full response rows to enrich with chunk_text, utterance, response
+    responses: dict[str, dict] = {}
+    if INPUT_FILE.exists():
+        with open(INPUT_FILE) as f:
+            for line in f:
+                r = json.loads(line)
+                responses[r["response_id"]] = r
+
     from collections import defaultdict
     buckets: dict = defaultdict(list)
     for s in valid:
-        key = (s["model"], s["cognitive_state"])
-        buckets[key].append(s)
+        full = responses.get(s["response_id"], {})
+        chunk_len = len(full.get("chunk_text", ""))
+        if chunk_len >= 400:  # prefer substantive chunks
+            key = (s["model"], s["cognitive_state"])
+            buckets[key].append(s)
+
+    if not buckets:  # fallback: no length filter
+        for s in valid:
+            key = (s["model"], s["cognitive_state"])
+            buckets[key].append(s)
 
     sample = []
     per_bucket = max(1, n // len(buckets))
@@ -326,7 +342,14 @@ def export_spot_check(n: int = 40):
 
     with open(SPOT_CHECK_FILE, "w") as f:
         for row in sample[:n]:
-            f.write(json.dumps(row) + "\n")
+            full = responses.get(row["response_id"], {})
+            enriched = {**row}
+            if full:
+                enriched["chunk_text"] = full.get("chunk_text", "")
+                enriched["utterance"]  = full.get("utterance", "")
+                enriched["response"]   = full.get("response", "")
+                enriched["profile"]    = full.get("profile", {})
+            f.write(json.dumps(enriched) + "\n")
 
     print(f"Exported {min(len(sample), n)} rows to {SPOT_CHECK_FILE}")
     print("Send this file to professor for verification of presuppositions and verdicts.")

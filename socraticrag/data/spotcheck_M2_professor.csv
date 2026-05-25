@@ -1,0 +1,704 @@
+row_id,model,cognitive_state,context_C,tutor_response_R,presupposition_number,presupposition_text,our_verdict,YOUR_VERDICT,notes
+1,gpt-4o,accurate,"It's also true that, within a single neural network, we may well want to have different step sizes. As our networks become deep (with increasing numbers of layers) we can find that magnitude of the gradient of the loss with respect to the weights in the last layer, W_L, may be substantially different from the gradient of the loss with respect to the weights in the first layer W_1. If you look carefully at equation 8.3, you can see that the output gradient is multiplied by all the weight matrices of the network and is ""fed back"" through all the derivatives of all the activation functions. This can lead to a problem of exploding or vanishing gradients, in which the back-propagated gradient is much too big or small to be used in an update rule with the same step size.",How might using different step sizes for different layers help address the issue of varying gradient magnitudes during back-propagation?,1,Different layers can be assigned different step sizes (learning rates) during training,SUPPORTED,,
+2,gpt-4o,accurate,"It's also true that, within a single neural network, we may well want to have different step sizes. As our networks become deep (with increasing numbers of layers) we can find that magnitude of the gradient of the loss with respect to the weights in the last layer, W_L, may be substantially different from the gradient of the loss with respect to the weights in the first layer W_1. If you look carefully at equation 8.3, you can see that the output gradient is multiplied by all the weight matrices of the network and is ""fed back"" through all the derivatives of all the activation functions. This can lead to a problem of exploding or vanishing gradients, in which the back-propagated gradient is much too big or small to be used in an update rule with the same step size.",How might using different step sizes for different layers help address the issue of varying gradient magnitudes during back-propagation?,2,Gradient magnitudes vary across different layers during back-propagation,SUPPORTED,,
+3,gpt-4o,accurate,"It's also true that, within a single neural network, we may well want to have different step sizes. As our networks become deep (with increasing numbers of layers) we can find that magnitude of the gradient of the loss with respect to the weights in the last layer, W_L, may be substantially different from the gradient of the loss with respect to the weights in the first layer W_1. If you look carefully at equation 8.3, you can see that the output gradient is multiplied by all the weight matrices of the network and is ""fed back"" through all the derivatives of all the activation functions. This can lead to a problem of exploding or vanishing gradients, in which the back-propagated gradient is much too big or small to be used in an update rule with the same step size.",How might using different step sizes for different layers help address the issue of varying gradient magnitudes during back-propagation?,3,Varying gradient magnitudes during back-propagation is a recognized issue in neural network training,SUPPORTED,,
+4,gpt-4o,accurate,"It's also true that, within a single neural network, we may well want to have different step sizes. As our networks become deep (with increasing numbers of layers) we can find that magnitude of the gradient of the loss with respect to the weights in the last layer, W_L, may be substantially different from the gradient of the loss with respect to the weights in the first layer W_1. If you look carefully at equation 8.3, you can see that the output gradient is multiplied by all the weight matrices of the network and is ""fed back"" through all the derivatives of all the activation functions. This can lead to a problem of exploding or vanishing gradients, in which the back-propagated gradient is much too big or small to be used in an update rule with the same step size.",How might using different step sizes for different layers help address the issue of varying gradient magnitudes during back-propagation?,4,Using different step sizes for different layers is a possible approach in optimization,SUPPORTED,,
+5,gpt-4o,accurate,"It's also true that, within a single neural network, we may well want to have different step sizes. As our networks become deep (with increasing numbers of layers) we can find that magnitude of the gradient of the loss with respect to the weights in the last layer, W_L, may be substantially different from the gradient of the loss with respect to the weights in the first layer W_1. If you look carefully at equation 8.3, you can see that the output gradient is multiplied by all the weight matrices of the network and is ""fed back"" through all the derivatives of all the activation functions. This can lead to a problem of exploding or vanishing gradients, in which the back-propagated gradient is much too big or small to be used in an update rule with the same step size.",How might using different step sizes for different layers help address the issue of varying gradient magnitudes during back-propagation?,5,The step size used during training affects how updates are applied in response to gradients,SUPPORTED,,
+6,gpt-4o,accurate,"It's also true that, within a single neural network, we may well want to have different step sizes. As our networks become deep (with increasing numbers of layers) we can find that magnitude of the gradient of the loss with respect to the weights in the last layer, W_L, may be substantially different from the gradient of the loss with respect to the weights in the first layer W_1. If you look carefully at equation 8.3, you can see that the output gradient is multiplied by all the weight matrices of the network and is ""fed back"" through all the derivatives of all the activation functions. This can lead to a problem of exploding or vanishing gradients, in which the back-propagated gradient is much too big or small to be used in an update rule with the same step size.",How might using different step sizes for different layers help address the issue of varying gradient magnitudes during back-propagation?,6,Back-propagation computes gradients that are used to update model parameters,NOT SUPPORTED,,
+7,gpt-4o,accurate,"Another common strategy is to simply penalize the norm of all the weights, as we did in ridge regression. This method is known as weight decay, because when we take the gradient of the objective
+
+J(W)=sum_i=1^nLoss(NN(x^(i)),y^(i);W)+lambda|W|^2
+
+we end up with an update of the form
+
+W_t =W_t-1-((_WLoss(NN(x^(i)),y^(i);W_t-1))+lambda W_t-1)
+=W_t-1(1-lambda)-(_WLoss(NN(x^(i)),y^(i);W_t-1)).
+
+This rule has the form of first “decaying” W_t-1 by a factor of (1-lambda) and then taking a gradient step.",How does reducing the weights by a factor of (1-λη) help in controlling the size of the weights and potentially reducing overfitting?,1,Reducing weights by a factor of (1-λη) is a specific operation that occurs during weight updates,SUPPORTED,,
+8,gpt-4o,accurate,"Another common strategy is to simply penalize the norm of all the weights, as we did in ridge regression. This method is known as weight decay, because when we take the gradient of the objective
+
+J(W)=sum_i=1^nLoss(NN(x^(i)),y^(i);W)+lambda|W|^2
+
+we end up with an update of the form
+
+W_t =W_t-1-((_WLoss(NN(x^(i)),y^(i);W_t-1))+lambda W_t-1)
+=W_t-1(1-lambda)-(_WLoss(NN(x^(i)),y^(i);W_t-1)).
+
+This rule has the form of first “decaying” W_t-1 by a factor of (1-lambda) and then taking a gradient step.",How does reducing the weights by a factor of (1-λη) help in controlling the size of the weights and potentially reducing overfitting?,2,λ is a regularization parameter and η is a learning rate in this context,NOT SUPPORTED,,
+9,gpt-4o,accurate,"Another common strategy is to simply penalize the norm of all the weights, as we did in ridge regression. This method is known as weight decay, because when we take the gradient of the objective
+
+J(W)=sum_i=1^nLoss(NN(x^(i)),y^(i);W)+lambda|W|^2
+
+we end up with an update of the form
+
+W_t =W_t-1-((_WLoss(NN(x^(i)),y^(i);W_t-1))+lambda W_t-1)
+=W_t-1(1-lambda)-(_WLoss(NN(x^(i)),y^(i);W_t-1)).
+
+This rule has the form of first “decaying” W_t-1 by a factor of (1-lambda) and then taking a gradient step.",How does reducing the weights by a factor of (1-λη) help in controlling the size of the weights and potentially reducing overfitting?,3,This weight reduction mechanism has an effect on the size of the weights,NOT SUPPORTED,,
+10,gpt-4o,accurate,"Another common strategy is to simply penalize the norm of all the weights, as we did in ridge regression. This method is known as weight decay, because when we take the gradient of the objective
+
+J(W)=sum_i=1^nLoss(NN(x^(i)),y^(i);W)+lambda|W|^2
+
+we end up with an update of the form
+
+W_t =W_t-1-((_WLoss(NN(x^(i)),y^(i);W_t-1))+lambda W_t-1)
+=W_t-1(1-lambda)-(_WLoss(NN(x^(i)),y^(i);W_t-1)).
+
+This rule has the form of first “decaying” W_t-1 by a factor of (1-lambda) and then taking a gradient step.",How does reducing the weights by a factor of (1-λη) help in controlling the size of the weights and potentially reducing overfitting?,4,Controlling the size of weights is a relevant goal in machine learning,NOT SUPPORTED,,
+11,gpt-4o,accurate,"Another common strategy is to simply penalize the norm of all the weights, as we did in ridge regression. This method is known as weight decay, because when we take the gradient of the objective
+
+J(W)=sum_i=1^nLoss(NN(x^(i)),y^(i);W)+lambda|W|^2
+
+we end up with an update of the form
+
+W_t =W_t-1-((_WLoss(NN(x^(i)),y^(i);W_t-1))+lambda W_t-1)
+=W_t-1(1-lambda)-(_WLoss(NN(x^(i)),y^(i);W_t-1)).
+
+This rule has the form of first “decaying” W_t-1 by a factor of (1-lambda) and then taking a gradient step.",How does reducing the weights by a factor of (1-λη) help in controlling the size of the weights and potentially reducing overfitting?,5,Overfitting is a problem that can be addressed by controlling weight sizes,NOT SUPPORTED,,
+12,gpt-4o,accurate,"Another common strategy is to simply penalize the norm of all the weights, as we did in ridge regression. This method is known as weight decay, because when we take the gradient of the objective
+
+J(W)=sum_i=1^nLoss(NN(x^(i)),y^(i);W)+lambda|W|^2
+
+we end up with an update of the form
+
+W_t =W_t-1-((_WLoss(NN(x^(i)),y^(i);W_t-1))+lambda W_t-1)
+=W_t-1(1-lambda)-(_WLoss(NN(x^(i)),y^(i);W_t-1)).
+
+This rule has the form of first “decaying” W_t-1 by a factor of (1-lambda) and then taking a gradient step.",How does reducing the weights by a factor of (1-λη) help in controlling the size of the weights and potentially reducing overfitting?,6,Large weights are associated with or contribute to overfitting,NOT SUPPORTED,,
+13,gpt-4o,accurate,"Another common strategy is to simply penalize the norm of all the weights, as we did in ridge regression. This method is known as weight decay, because when we take the gradient of the objective
+
+J(W)=sum_i=1^nLoss(NN(x^(i)),y^(i);W)+lambda|W|^2
+
+we end up with an update of the form
+
+W_t =W_t-1-((_WLoss(NN(x^(i)),y^(i);W_t-1))+lambda W_t-1)
+=W_t-1(1-lambda)-(_WLoss(NN(x^(i)),y^(i);W_t-1)).
+
+This rule has the form of first “decaying” W_t-1 by a factor of (1-lambda) and then taking a gradient step.",How does reducing the weights by a factor of (1-λη) help in controlling the size of the weights and potentially reducing overfitting?,7,"The factor (1-λη) is less than 1, meaning it shrinks the weights each update",NOT SUPPORTED,,
+14,gpt-4o,accurate,"A model class M is a set of possible models, typically parameterized by a vector of parameters . What assumptions will we make about the form of the model? When solving a regression problem using a prediction-rule approach, we might try to find a linear function h(x; theta, theta_0) = theta^T x + theta_0 that fits our data well. In this example, the parameter vector = (theta, theta_0).",How does including the bias term theta_0 in the parameter vector affect the flexibility of the linear function in fitting the data?,1,The bias term is denoted $\theta_0$,SUPPORTED,,
+15,gpt-4o,accurate,"A model class M is a set of possible models, typically parameterized by a vector of parameters . What assumptions will we make about the form of the model? When solving a regression problem using a prediction-rule approach, we might try to find a linear function h(x; theta, theta_0) = theta^T x + theta_0 that fits our data well. In this example, the parameter vector = (theta, theta_0).",How does including the bias term theta_0 in the parameter vector affect the flexibility of the linear function in fitting the data?,2,The bias term $\theta_0$ can be included in the parameter vector $\Theta$,SUPPORTED,,
+16,gpt-4o,accurate,"A model class M is a set of possible models, typically parameterized by a vector of parameters . What assumptions will we make about the form of the model? When solving a regression problem using a prediction-rule approach, we might try to find a linear function h(x; theta, theta_0) = theta^T x + theta_0 that fits our data well. In this example, the parameter vector = (theta, theta_0).",How does including the bias term theta_0 in the parameter vector affect the flexibility of the linear function in fitting the data?,3,The parameter vector $\Theta$ exists and contains model parameters,SUPPORTED,,
+17,gpt-4o,accurate,"A model class M is a set of possible models, typically parameterized by a vector of parameters . What assumptions will we make about the form of the model? When solving a regression problem using a prediction-rule approach, we might try to find a linear function h(x; theta, theta_0) = theta^T x + theta_0 that fits our data well. In this example, the parameter vector = (theta, theta_0).",How does including the bias term theta_0 in the parameter vector affect the flexibility of the linear function in fitting the data?,4,A linear function is being used to fit data,SUPPORTED,,
+18,gpt-4o,accurate,"A model class M is a set of possible models, typically parameterized by a vector of parameters . What assumptions will we make about the form of the model? When solving a regression problem using a prediction-rule approach, we might try to find a linear function h(x; theta, theta_0) = theta^T x + theta_0 that fits our data well. In this example, the parameter vector = (theta, theta_0).",How does including the bias term theta_0 in the parameter vector affect the flexibility of the linear function in fitting the data?,5,Including or excluding $\theta_0$ in $\Theta$ affects the behavior of the linear function,NOT SUPPORTED,,
+19,gpt-4o,accurate,"A model class M is a set of possible models, typically parameterized by a vector of parameters . What assumptions will we make about the form of the model? When solving a regression problem using a prediction-rule approach, we might try to find a linear function h(x; theta, theta_0) = theta^T x + theta_0 that fits our data well. In this example, the parameter vector = (theta, theta_0).",How does including the bias term theta_0 in the parameter vector affect the flexibility of the linear function in fitting the data?,6,The flexibility of a linear function in fitting data is a meaningful and measurable property,NOT SUPPORTED,,
+20,gpt-4o,accurate,"A model class M is a set of possible models, typically parameterized by a vector of parameters . What assumptions will we make about the form of the model? When solving a regression problem using a prediction-rule approach, we might try to find a linear function h(x; theta, theta_0) = theta^T x + theta_0 that fits our data well. In this example, the parameter vector = (theta, theta_0).",How does including the bias term theta_0 in the parameter vector affect the flexibility of the linear function in fitting the data?,7,The bias term affects the flexibility of the linear function differently than if it were excluded,NOT SUPPORTED,,
+21,claude-sonnet-4-6,accurate,"Another common strategy is to simply penalize the norm of all the weights, as we did in ridge regression. This method is known as weight decay, because when we take the gradient of the objective
+
+J(W)=sum_i=1^nLoss(NN(x^(i)),y^(i);W)+lambda|W|^2
+
+we end up with an update of the form
+
+W_t =W_t-1-((_WLoss(NN(x^(i)),y^(i);W_t-1))+lambda W_t-1)
+=W_t-1(1-lambda)-(_WLoss(NN(x^(i)),y^(i);W_t-1)).
+
+This rule has the form of first “decaying” W_t-1 by a factor of (1-lambda) and then taking a gradient step.","What in the objective function J(W) do you think mathematically causes the weights to be ""kept small,"" and how does that term relate to the (1-λη) factor you see in the update rule?",—,(no presuppositions extracted — vacuous response),VACUOUS,N/A — skip this row,
+22,claude-sonnet-4-6,accurate,"If y is a scalar and X is a matrix of size [n x m], then
+
+( y)/( X) = 
+( y)/( x_11) & ( y)/( x_21) & ·s & ( y)/( x_n1) & & & ( y)/( x_1m) & ( y)/( x_2m) & ·s & ( y)/( x_nm)
+
+The output is a matrix of size [m x n].","If the original matrix **X** has element x_ij at row i and column j, where exactly does ( y)/( x_ij) appear in the resulting [m x n] output matrix, and what does that tell you about how the rows and columns are being reorganized?",—,(no presuppositions extracted — vacuous response),VACUOUS,N/A — skip this row,
+23,claude-sonnet-4-6,accurate,"Formally, we define a state machine as (S,X,Y,_0,,) where
+
+- S is a finite or infinite set of possible states;
+- X is a finite or infinite set of possible inputs;
+- Y is a finite or infinite set of possible outputs;
+- s_0 S is the initial state of the machine;
+- f: S x X S is a transition function, which takes an input and a previous state and produces a next state;","Given that the transition function f maps from S × X to S, what do you think would happen to the machine's behavior if the transition function could only use the input, without any knowledge of the current state?",—,(no presuppositions extracted — vacuous response),VACUOUS,N/A — skip this row,
+24,gemini-2.0-flash,accurate,"Now, given a data set and the hypothesis class of linear classifiers, our objective will be to find the linear classifier with the smallest possible training error.
+
+This is a well-formed optimization problem. But it's not computationally easy!
+
+We'll start by considering a very simple learning algorithm. The idea is to generate k possible hypotheses by generating their parameter vectors at random. Then, we can evaluate the training-set error on each of the hypotheses and return the hypothesis that has the lowest training error (breaking ties arbitrarily).
+
+It's a good idea to think of the ""stupidest possible"" solution to a problem, before trying to get clever. Here's a fairly (but not completely) stupid algorithm.","Given that we're evaluating each hypothesis by its training error, what specific aspect of this random generation approach might make it computationally challenging, especially as the number of possible hypotheses grows?",—,(no presuppositions extracted — vacuous response),VACUOUS,N/A — skip this row,
+25,gemini-2.0-flash,accurate,"Example: Let h be the linear classifier defined by theta = 1 -1 , theta_0 = 1 .
+
+The diagram below shows several points classified by h , one of which is misclassified. We compute the margin for each point:
+
+y ^ (1) · theta^ {T x ^ (1) + theta_ 0}| theta | = 1 · - 2 + 1 {2} = - {2}2
+
+y ^ (2) · theta^ {T x ^ (2) + theta_ 0}| theta | = 1 · 1 + 1 {2} = 2
+
+y ^ (3) · theta^ {T x ^ (3) + theta_ 0}| theta | = - 1 · - 3 + 1 {2} = 2
+
+Note that since point x^(1) is misclassified, its margin is negative. Thus the margin for the whole data set is given by -(2)2 .","That's a great observation! Given that the margin combines both distance from the boundary and correctness of classification, how does the formula given, y ^ (i) · theta^ {T x ^ (i) + theta_ 0}| theta |, achieve this?",—,(no presuppositions extracted — vacuous response),VACUOUS,N/A — skip this row,
+26,gemini-2.0-flash,accurate,"It only works if batch size is sufficiently big. Suppose your batch size is 1. Then if you have an activation vector z and subtract the mean over the batch, you get z - z = 0. The model just zeroed out the activation vector and your net won't work. Worse, the variance is undefined for batch size 1 and that could cause bugs too. For small batch size the variance could be a very poor estimate of the true variance of the activations and cause numerical and optimization issues. [I had this bug in the original version of the pix2pix paper, and it made the baseline work worse than it should have (which might not have been a bad thing for making the paper popular...). See change log in appendix here: https://arxiv.org/abs/1611.07004]","Given that a batch size of 1 leads to zeroed activations, and small batch sizes can cause unreliable variance estimates, what characteristic should an ""optimal"" batch size possess to avoid these issues?",—,(no presuppositions extracted — vacuous response),VACUOUS,N/A — skip this row,
+27,gpt-4o,erroneous,"Rather than having just one way of attending, why not have k?
+
+Each gets its own parameterized query(), key(), value() functions.
+
+Run them all in parallel, then (weighted) sum the output token code vectors
+
+T_out^i = ^i(T_in) for i 1, , k
+
+T_bar_out = T_out^1[0,:] &amp; &amp; T_out^k[0,:] &amp; &amp; T_out^1[N-1,:] &amp; &amp; T_out^k[N-1,:] T_bar_out R^N x k
+
+T_out = T_bar_out W_MSA W_MSA R^k x d",What role does the matrix W_MSA play after concatenating the outputs from each head?,1,There exists a matrix called W_MSA,SUPPORTED,,
+28,gpt-4o,erroneous,"Rather than having just one way of attending, why not have k?
+
+Each gets its own parameterized query(), key(), value() functions.
+
+Run them all in parallel, then (weighted) sum the output token code vectors
+
+T_out^i = ^i(T_in) for i 1, , k
+
+T_bar_out = T_out^1[0,:] &amp; &amp; T_out^k[0,:] &amp; &amp; T_out^1[N-1,:] &amp; &amp; T_out^k[N-1,:] T_bar_out R^N x k
+
+T_out = T_bar_out W_MSA W_MSA R^k x d",What role does the matrix W_MSA play after concatenating the outputs from each head?,2,The outputs from multiple heads are concatenated,SUPPORTED,,
+29,gpt-4o,erroneous,"Rather than having just one way of attending, why not have k?
+
+Each gets its own parameterized query(), key(), value() functions.
+
+Run them all in parallel, then (weighted) sum the output token code vectors
+
+T_out^i = ^i(T_in) for i 1, , k
+
+T_bar_out = T_out^1[0,:] &amp; &amp; T_out^k[0,:] &amp; &amp; T_out^1[N-1,:] &amp; &amp; T_out^k[N-1,:] T_bar_out R^N x k
+
+T_out = T_bar_out W_MSA W_MSA R^k x d",What role does the matrix W_MSA play after concatenating the outputs from each head?,3,W_MSA is applied after the concatenation of head outputs,SUPPORTED,,
+30,gpt-4o,erroneous,"Rather than having just one way of attending, why not have k?
+
+Each gets its own parameterized query(), key(), value() functions.
+
+Run them all in parallel, then (weighted) sum the output token code vectors
+
+T_out^i = ^i(T_in) for i 1, , k
+
+T_bar_out = T_out^1[0,:] &amp; &amp; T_out^k[0,:] &amp; &amp; T_out^1[N-1,:] &amp; &amp; T_out^k[N-1,:] T_bar_out R^N x k
+
+T_out = T_bar_out W_MSA W_MSA R^k x d",What role does the matrix W_MSA play after concatenating the outputs from each head?,4,W_MSA plays a specific role in the multi-head self-attention mechanism,NOT SUPPORTED,,
+31,gpt-4o,erroneous,"How should we evaluate the performance of a learning algorithm? This is trickier. There are many potential sources of variability in the possible result of computing test error on a learned hypothesis h:
+
+- Which particular training examples occurred in D_n
+- Which particular testing examples occurred in D_n?
+- Randomization inside the learning algorithm itself
+
+Generally, we would like to execute the following process multiple times:
+
+- Train on a new training set
+- Evaluate resulting h on a testing set that does not overlap the training set
+
+Doing this multiple times controls for possible poor choices of training set or unfortunate randomization inside the algorithm itself.",How might the variability in training examples or randomization within the learning algorithm affect the reliability of evaluating performance using only one training and testing dataset?,1,Training examples can vary across different training datasets,SUPPORTED,,
+32,gpt-4o,erroneous,"How should we evaluate the performance of a learning algorithm? This is trickier. There are many potential sources of variability in the possible result of computing test error on a learned hypothesis h:
+
+- Which particular training examples occurred in D_n
+- Which particular testing examples occurred in D_n?
+- Randomization inside the learning algorithm itself
+
+Generally, we would like to execute the following process multiple times:
+
+- Train on a new training set
+- Evaluate resulting h on a testing set that does not overlap the training set
+
+Doing this multiple times controls for possible poor choices of training set or unfortunate randomization inside the algorithm itself.",How might the variability in training examples or randomization within the learning algorithm affect the reliability of evaluating performance using only one training and testing dataset?,2,Learning algorithms may include randomization as part of their process,SUPPORTED,,
+33,gpt-4o,erroneous,"How should we evaluate the performance of a learning algorithm? This is trickier. There are many potential sources of variability in the possible result of computing test error on a learned hypothesis h:
+
+- Which particular training examples occurred in D_n
+- Which particular testing examples occurred in D_n?
+- Randomization inside the learning algorithm itself
+
+Generally, we would like to execute the following process multiple times:
+
+- Train on a new training set
+- Evaluate resulting h on a testing set that does not overlap the training set
+
+Doing this multiple times controls for possible poor choices of training set or unfortunate randomization inside the algorithm itself.",How might the variability in training examples or randomization within the learning algorithm affect the reliability of evaluating performance using only one training and testing dataset?,3,Randomization within a learning algorithm can produce different outcomes across runs,SUPPORTED,,
+34,gpt-4o,erroneous,"How should we evaluate the performance of a learning algorithm? This is trickier. There are many potential sources of variability in the possible result of computing test error on a learned hypothesis h:
+
+- Which particular training examples occurred in D_n
+- Which particular testing examples occurred in D_n?
+- Randomization inside the learning algorithm itself
+
+Generally, we would like to execute the following process multiple times:
+
+- Train on a new training set
+- Evaluate resulting h on a testing set that does not overlap the training set
+
+Doing this multiple times controls for possible poor choices of training set or unfortunate randomization inside the algorithm itself.",How might the variability in training examples or randomization within the learning algorithm affect the reliability of evaluating performance using only one training and testing dataset?,4,Performance evaluation can be conducted using a single training and testing dataset split,NOT SUPPORTED,,
+35,gpt-4o,erroneous,"How should we evaluate the performance of a learning algorithm? This is trickier. There are many potential sources of variability in the possible result of computing test error on a learned hypothesis h:
+
+- Which particular training examples occurred in D_n
+- Which particular testing examples occurred in D_n?
+- Randomization inside the learning algorithm itself
+
+Generally, we would like to execute the following process multiple times:
+
+- Train on a new training set
+- Evaluate resulting h on a testing set that does not overlap the training set
+
+Doing this multiple times controls for possible poor choices of training set or unfortunate randomization inside the algorithm itself.",How might the variability in training examples or randomization within the learning algorithm affect the reliability of evaluating performance using only one training and testing dataset?,5,Using only one training and testing dataset is a method for evaluating model performance,NOT SUPPORTED,,
+36,gpt-4o,erroneous,"How should we evaluate the performance of a learning algorithm? This is trickier. There are many potential sources of variability in the possible result of computing test error on a learned hypothesis h:
+
+- Which particular training examples occurred in D_n
+- Which particular testing examples occurred in D_n?
+- Randomization inside the learning algorithm itself
+
+Generally, we would like to execute the following process multiple times:
+
+- Train on a new training set
+- Evaluate resulting h on a testing set that does not overlap the training set
+
+Doing this multiple times controls for possible poor choices of training set or unfortunate randomization inside the algorithm itself.",How might the variability in training examples or randomization within the learning algorithm affect the reliability of evaluating performance using only one training and testing dataset?,6,The variability in training examples or algorithm randomization can affect measured performance,SUPPORTED,,
+37,gpt-4o,erroneous,"How should we evaluate the performance of a learning algorithm? This is trickier. There are many potential sources of variability in the possible result of computing test error on a learned hypothesis h:
+
+- Which particular training examples occurred in D_n
+- Which particular testing examples occurred in D_n?
+- Randomization inside the learning algorithm itself
+
+Generally, we would like to execute the following process multiple times:
+
+- Train on a new training set
+- Evaluate resulting h on a testing set that does not overlap the training set
+
+Doing this multiple times controls for possible poor choices of training set or unfortunate randomization inside the algorithm itself.",How might the variability in training examples or randomization within the learning algorithm affect the reliability of evaluating performance using only one training and testing dataset?,7,Reliability of performance evaluation can be impacted by how the data is split,NOT SUPPORTED,,
+38,gpt-4o,erroneous,"How should we evaluate the performance of a learning algorithm? This is trickier. There are many potential sources of variability in the possible result of computing test error on a learned hypothesis h:
+
+- Which particular training examples occurred in D_n
+- Which particular testing examples occurred in D_n?
+- Randomization inside the learning algorithm itself
+
+Generally, we would like to execute the following process multiple times:
+
+- Train on a new training set
+- Evaluate resulting h on a testing set that does not overlap the training set
+
+Doing this multiple times controls for possible poor choices of training set or unfortunate randomization inside the algorithm itself.",How might the variability in training examples or randomization within the learning algorithm affect the reliability of evaluating performance using only one training and testing dataset?,8,Evaluating performance on a single dataset split may not produce a reliable estimate of true performance,NOT SUPPORTED,,
+39,gpt-4o,erroneous,"This doesn't quite look like an adaptive step size. But what we can see is that, if we let = '(1 - gamma) , then the rule looks exactly like doing an update with step size ' on a moving average of the gradients with parameter gamma :
+
+M _ 0 = 0
+
+M _ t = gamma M _ t - 1 + (1 - gamma) _ W J (W _ t - 1)
+
+W _ t = W _ t - 1 - ^ M _ t",How does the expression = '(1 - gamma) suggest that relates to the step size ' and the parameter gamma?,1,The expression η = η'(1 - γ) is a mathematical relationship involving three terms,SUPPORTED,,
+40,gpt-4o,erroneous,"This doesn't quite look like an adaptive step size. But what we can see is that, if we let = '(1 - gamma) , then the rule looks exactly like doing an update with step size ' on a moving average of the gradients with parameter gamma :
+
+M _ 0 = 0
+
+M _ t = gamma M _ t - 1 + (1 - gamma) _ W J (W _ t - 1)
+
+W _ t = W _ t - 1 - ^ M _ t",How does the expression = '(1 - gamma) suggest that relates to the step size ' and the parameter gamma?,2,η is a variable representing something distinct from η',SUPPORTED,,
+41,gpt-4o,erroneous,"This doesn't quite look like an adaptive step size. But what we can see is that, if we let = '(1 - gamma) , then the rule looks exactly like doing an update with step size ' on a moving average of the gradients with parameter gamma :
+
+M _ 0 = 0
+
+M _ t = gamma M _ t - 1 + (1 - gamma) _ W J (W _ t - 1)
+
+W _ t = W _ t - 1 - ^ M _ t",How does the expression = '(1 - gamma) suggest that relates to the step size ' and the parameter gamma?,3,η' represents a step size in some iterative or optimization process,SUPPORTED,,
+42,gpt-4o,erroneous,"This doesn't quite look like an adaptive step size. But what we can see is that, if we let = '(1 - gamma) , then the rule looks exactly like doing an update with step size ' on a moving average of the gradients with parameter gamma :
+
+M _ 0 = 0
+
+M _ t = gamma M _ t - 1 + (1 - gamma) _ W J (W _ t - 1)
+
+W _ t = W _ t - 1 - ^ M _ t",How does the expression = '(1 - gamma) suggest that relates to the step size ' and the parameter gamma?,4,γ is a parameter in the expression η = η'(1 - γ),SUPPORTED,,
+43,gpt-4o,erroneous,"This doesn't quite look like an adaptive step size. But what we can see is that, if we let = '(1 - gamma) , then the rule looks exactly like doing an update with step size ' on a moving average of the gradients with parameter gamma :
+
+M _ 0 = 0
+
+M _ t = gamma M _ t - 1 + (1 - gamma) _ W J (W _ t - 1)
+
+W _ t = W _ t - 1 - ^ M _ t",How does the expression = '(1 - gamma) suggest that relates to the step size ' and the parameter gamma?,5,η is defined in terms of η' and γ via the expression η = η'(1 - γ),SUPPORTED,,
+44,gpt-4o,erroneous,"This doesn't quite look like an adaptive step size. But what we can see is that, if we let = '(1 - gamma) , then the rule looks exactly like doing an update with step size ' on a moving average of the gradients with parameter gamma :
+
+M _ 0 = 0
+
+M _ t = gamma M _ t - 1 + (1 - gamma) _ W J (W _ t - 1)
+
+W _ t = W _ t - 1 - ^ M _ t",How does the expression = '(1 - gamma) suggest that relates to the step size ' and the parameter gamma?,6,The value of η depends on both η' and γ,SUPPORTED,,
+45,gpt-4o,erroneous,"This doesn't quite look like an adaptive step size. But what we can see is that, if we let = '(1 - gamma) , then the rule looks exactly like doing an update with step size ' on a moving average of the gradients with parameter gamma :
+
+M _ 0 = 0
+
+M _ t = gamma M _ t - 1 + (1 - gamma) _ W J (W _ t - 1)
+
+W _ t = W _ t - 1 - ^ M _ t",How does the expression = '(1 - gamma) suggest that relates to the step size ' and the parameter gamma?,7,η' and η are related but not equal in general,SUPPORTED,,
+46,gpt-4o,erroneous,"This doesn't quite look like an adaptive step size. But what we can see is that, if we let = '(1 - gamma) , then the rule looks exactly like doing an update with step size ' on a moving average of the gradients with parameter gamma :
+
+M _ 0 = 0
+
+M _ t = gamma M _ t - 1 + (1 - gamma) _ W J (W _ t - 1)
+
+W _ t = W _ t - 1 - ^ M _ t",How does the expression = '(1 - gamma) suggest that relates to the step size ' and the parameter gamma?,8,The factor (1 - γ) scales η' to produce η,SUPPORTED,,
+47,claude-sonnet-4-6,erroneous,"The idea of gating networks can be applied to make a state-machine that is even more like a computer memory, resulting in a type of network called an LSTM for ""long short-term memory."" We won't go into the details here, but the basic idea is that there is a memory cell (really, our state vector) and three (!) gating networks. The input gate selects (using a ""soft"" selection as in the gated network above) which dimensions of the state will be updated with new values; the forget gate decides which dimensions of the state will have its old values moved toward 0, and the output gate decides which dimensions of the state will be used to compute the output value. These networks have been used in applications like language translation with really amazing results.","Based on what the context describes about the memory cell and the three gating networks, what do you think is the actual role of each gating network — are they storing data themselves, or are they doing something else to control the memory cell?",—,(no presuppositions extracted — vacuous response),VACUOUS,N/A — skip this row,
+48,claude-sonnet-4-6,erroneous,"Trick #2: Importance sampling
+
+p_theta(x) = E_z p_z [ p_theta(x | z) ] = integral_z p_z(z) p_theta(x | z) dz = integral_z q_z(z) _z(z)q_z(z) p_theta(x | z) dz = E_z q_z [ _z(z)q_z(z) p_theta(x | z) ]
+
+Set q_z = p_theta(Z|x)","If q(z) is set to p_θ(Z|x), what does the ratio p_z(z)/q_z(z) actually simplify to, and does that mean the reweighting term disappears or becomes something more meaningful?",—,(no presuppositions extracted — vacuous response),VACUOUS,N/A — skip this row,
+49,claude-sonnet-4-6,erroneous,"Proof. We initialize theta^(0) = 0 , and let theta^(k) define our hyperplane after the perceptron algorithm has made k mistakes. We are going to think about the angle between the hypothesis we have now, theta^(k) and the assumed good separator theta^* . Since they both go through the origin, if we can show that the angle between them is decreasing usefully on every iteration, then we will get close to that separator.","What does the proof say the algorithm is actually tracking — and is it directly comparing the hyperplane to the optimal separator, or measuring something else about their relationship?",—,(no presuppositions extracted — vacuous response),VACUOUS,N/A — skip this row,
+50,gemini-2.0-flash,erroneous,"One way to handle this is to use experience replay, where we save our (s, a, r, s') experiences in a replay buffer. Whenever we take a step in the world, we add the (s, a, r, s') to the replay buffer and use it to do a Q-learning update. Then we also randomly select some number of tuples from the replay buffer, and do Q-learning updates based on them, as well. In general it may help to keep a sliding window of just the 1000 most recent experiences in the replay buffer. (A larger buffer will be necessary for situations when the optimal policy might visit a large part of the state space, but we like to keep the buffer size small for memory reasons and also so that we don't focus on parts of the state space that are irrelevant for the optimal policy.) The idea is that it will help you propagate reward values through your state space more efficiently if you do these updates. You can see it as doing something like value iteration, but using samples of experience rather than a known model.","Given the desire to propagate reward values efficiently and the constraints of memory and relevance to the optimal policy, what are the potential downsides of using a very large replay buffer?",—,(no presuppositions extracted — vacuous response),VACUOUS,N/A — skip this row,
+51,gemini-2.0-flash,erroneous,"A module M is “ (alpha, beta, gamma) -sharp” if second derivatives obey:
+
+I. | w_w_wM w_tilde| _y<= alpha *M.norm( w)*M.norm( w_tilde)
+II. | x_x_wM w| _y<= beta *M.norm( w)*| x| _alpha
+III. | x_x_xM x_tilde| _y<= gamma *| x| _alpha *| x_tilde| _alpha","How might the inequalities I, II, and III change if the values of alpha, beta, and gamma were larger, and what would that imply about the bounds on the second derivatives?",—,(no presuppositions extracted — vacuous response),VACUOUS,N/A — skip this row,
+52,gemini-2.0-flash,erroneous,"Input sentence: 李克強此行將啟動中加速殘存,從前頂棲脫。為誰家大總殘存,請各舉行兩個總理首次年度對話. Translation (PBMT): Li Keqiang premier added this line to start the annual dialogue mechanism with the Canadian Prime Minister. Trudixiu two prime ministers held its first annual session. Translation (GMMT): Li Keqiang will start the annual dialogue mechanism with Prime Minister. Trudixiu of Canada and hold the first annual dialogue between the two premiers. Translation (human): Li Keqiang will initiate the annual dialogue mechanism between premiers of China and Canada during the visit, and hold the first annual dialogue with Premier Trudixiu of Canada.","While all three translations mention the dialogue, do they all specify *who* will be participating in the dialogue and the nature of the dialogue?",—,(no presuppositions extracted — vacuous response),VACUOUS,N/A — skip this row,
+53,gpt-4o,comprehension,"In fact, for different problem settings, we might prefer to pick a different prediction threshold. The field of decision theory considers how to make this choice from the perspective of Bayesian reasoning. For example, if the consequences of predicting +1 when the answer should be -1 are much worse than the consequences of predicting -1 when the answer should be +1 , then we might set the prediction threshold to be greater than 0.5.",How does the severity of the consequences influence the decision on where to set the prediction threshold?,1,There exists a prediction threshold that can be set,SUPPORTED,,
+54,gpt-4o,comprehension,"In fact, for different problem settings, we might prefer to pick a different prediction threshold. The field of decision theory considers how to make this choice from the perspective of Bayesian reasoning. For example, if the consequences of predicting +1 when the answer should be -1 are much worse than the consequences of predicting -1 when the answer should be +1 , then we might set the prediction threshold to be greater than 0.5.",How does the severity of the consequences influence the decision on where to set the prediction threshold?,2,The prediction threshold can be set at different levels,SUPPORTED,,
+55,gpt-4o,comprehension,"In fact, for different problem settings, we might prefer to pick a different prediction threshold. The field of decision theory considers how to make this choice from the perspective of Bayesian reasoning. For example, if the consequences of predicting +1 when the answer should be -1 are much worse than the consequences of predicting -1 when the answer should be +1 , then we might set the prediction threshold to be greater than 0.5.",How does the severity of the consequences influence the decision on where to set the prediction threshold?,3,Consequences of predictions vary in severity,SUPPORTED,,
+56,gpt-4o,comprehension,"In fact, for different problem settings, we might prefer to pick a different prediction threshold. The field of decision theory considers how to make this choice from the perspective of Bayesian reasoning. For example, if the consequences of predicting +1 when the answer should be -1 are much worse than the consequences of predicting -1 when the answer should be +1 , then we might set the prediction threshold to be greater than 0.5.",How does the severity of the consequences influence the decision on where to set the prediction threshold?,4,The severity of consequences is a factor that influences where the prediction threshold is set,SUPPORTED,,
+57,gpt-4o,comprehension,"In fact, for different problem settings, we might prefer to pick a different prediction threshold. The field of decision theory considers how to make this choice from the perspective of Bayesian reasoning. For example, if the consequences of predicting +1 when the answer should be -1 are much worse than the consequences of predicting -1 when the answer should be +1 , then we might set the prediction threshold to be greater than 0.5.",How does the severity of the consequences influence the decision on where to set the prediction threshold?,5,There is a decision-making process involved in setting the prediction threshold,SUPPORTED,,
+58,gpt-4o,comprehension,"Recall that we have a training dataset D_n with x R^d , and y -1, + 1 . The Perceptron algorithm trains a binary classifier (x;theta ,theta_0) using the following algorithm to find theta and theta_0 using tau iterative steps:
+
+We use Greek letter tau here instead of T so we don't confuse it with transpose!
+
+PERCEPTRON(τ, Dn)
+
+1 theta = [ 0 &amp; 0 &amp; &amp; 0 ]^T
+2 theta_0 = 0
+3 for t = 1 to tau
+4 for i = 1 to n
+5 if y^(i)(theta^Tx^(i) + theta_0)<=slant 0
+6 theta = theta +y^(i)x^(i)
+7 theta_0 = theta_0 + y^(i)
+8 return theta ,theta_0",How does the condition y^(i)(theta^Tx^(i) + theta_0) <= 0 relate to the correctness of the prediction for the sample x^(i) with label y^(i)?,1,The expression θᵀx⁽ⁱ⁾ + θ₀ represents the decision function or raw score for sample x⁽ⁱ⁾,NOT SUPPORTED,,
+59,gpt-4o,comprehension,"Recall that we have a training dataset D_n with x R^d , and y -1, + 1 . The Perceptron algorithm trains a binary classifier (x;theta ,theta_0) using the following algorithm to find theta and theta_0 using tau iterative steps:
+
+We use Greek letter tau here instead of T so we don't confuse it with transpose!
+
+PERCEPTRON(τ, Dn)
+
+1 theta = [ 0 &amp; 0 &amp; &amp; 0 ]^T
+2 theta_0 = 0
+3 for t = 1 to tau
+4 for i = 1 to n
+5 if y^(i)(theta^Tx^(i) + theta_0)<=slant 0
+6 theta = theta +y^(i)x^(i)
+7 theta_0 = theta_0 + y^(i)
+8 return theta ,theta_0",How does the condition y^(i)(theta^Tx^(i) + theta_0) <= 0 relate to the correctness of the prediction for the sample x^(i) with label y^(i)?,2,y⁽ⁱ⁾ is a label associated with sample x⁽ⁱ⁾,SUPPORTED,,
+60,gpt-4o,comprehension,"Recall that we have a training dataset D_n with x R^d , and y -1, + 1 . The Perceptron algorithm trains a binary classifier (x;theta ,theta_0) using the following algorithm to find theta and theta_0 using tau iterative steps:
+
+We use Greek letter tau here instead of T so we don't confuse it with transpose!
+
+PERCEPTRON(τ, Dn)
+
+1 theta = [ 0 &amp; 0 &amp; &amp; 0 ]^T
+2 theta_0 = 0
+3 for t = 1 to tau
+4 for i = 1 to n
+5 if y^(i)(theta^Tx^(i) + theta_0)<=slant 0
+6 theta = theta +y^(i)x^(i)
+7 theta_0 = theta_0 + y^(i)
+8 return theta ,theta_0",How does the condition y^(i)(theta^Tx^(i) + theta_0) <= 0 relate to the correctness of the prediction for the sample x^(i) with label y^(i)?,3,The product y⁽ⁱ⁾(θᵀx⁽ⁱ⁾ + θ₀) being less than or equal to zero has a specific meaning related to classification correctness,NOT SUPPORTED,,
+61,gpt-4o,comprehension,"Recall that we have a training dataset D_n with x R^d , and y -1, + 1 . The Perceptron algorithm trains a binary classifier (x;theta ,theta_0) using the following algorithm to find theta and theta_0 using tau iterative steps:
+
+We use Greek letter tau here instead of T so we don't confuse it with transpose!
+
+PERCEPTRON(τ, Dn)
+
+1 theta = [ 0 &amp; 0 &amp; &amp; 0 ]^T
+2 theta_0 = 0
+3 for t = 1 to tau
+4 for i = 1 to n
+5 if y^(i)(theta^Tx^(i) + theta_0)<=slant 0
+6 theta = theta +y^(i)x^(i)
+7 theta_0 = theta_0 + y^(i)
+8 return theta ,theta_0",How does the condition y^(i)(theta^Tx^(i) + theta_0) <= 0 relate to the correctness of the prediction for the sample x^(i) with label y^(i)?,4,A prediction can be characterized as correct or incorrect based on the sign relationship between the label y⁽ⁱ⁾ and the decision function θᵀx⁽ⁱ⁾ + θ₀,NOT SUPPORTED,,
+62,gpt-4o,comprehension,"Recall that we have a training dataset D_n with x R^d , and y -1, + 1 . The Perceptron algorithm trains a binary classifier (x;theta ,theta_0) using the following algorithm to find theta and theta_0 using tau iterative steps:
+
+We use Greek letter tau here instead of T so we don't confuse it with transpose!
+
+PERCEPTRON(τ, Dn)
+
+1 theta = [ 0 &amp; 0 &amp; &amp; 0 ]^T
+2 theta_0 = 0
+3 for t = 1 to tau
+4 for i = 1 to n
+5 if y^(i)(theta^Tx^(i) + theta_0)<=slant 0
+6 theta = theta +y^(i)x^(i)
+7 theta_0 = theta_0 + y^(i)
+8 return theta ,theta_0",How does the condition y^(i)(theta^Tx^(i) + theta_0) <= 0 relate to the correctness of the prediction for the sample x^(i) with label y^(i)?,5,The condition y⁽ⁱ⁾(θᵀx⁽ⁱ⁾ + θ₀) ≤ 0 implies the predicted sign disagrees with the true label y⁽ⁱ⁾,NOT SUPPORTED,,
+63,gpt-4o,comprehension,"Recall that we have a training dataset D_n with x R^d , and y -1, + 1 . The Perceptron algorithm trains a binary classifier (x;theta ,theta_0) using the following algorithm to find theta and theta_0 using tau iterative steps:
+
+We use Greek letter tau here instead of T so we don't confuse it with transpose!
+
+PERCEPTRON(τ, Dn)
+
+1 theta = [ 0 &amp; 0 &amp; &amp; 0 ]^T
+2 theta_0 = 0
+3 for t = 1 to tau
+4 for i = 1 to n
+5 if y^(i)(theta^Tx^(i) + theta_0)<=slant 0
+6 theta = theta +y^(i)x^(i)
+7 theta_0 = theta_0 + y^(i)
+8 return theta ,theta_0",How does the condition y^(i)(theta^Tx^(i) + theta_0) <= 0 relate to the correctness of the prediction for the sample x^(i) with label y^(i)?,6,θ and θ₀ are parameters of a linear classifier,SUPPORTED,,
+64,gpt-4o,comprehension,"If you choose to leave a feature as numeric, it is typically useful to scale it, so that it tends to be in the range [-1, +1]. Without performing this transformation, if you have one feature with much larger values than another, it will take the learning algorithm a lot of work to find parameters that can put them on an equal basis. So, we might perform transformation phi(x) = - {x}sigma, where is the average of the x^(i), and sigma is the standard deviation of the x^(i). The resulting feature values will have mean 0 and standard deviation 1. This transformation is sometimes called standardizing a variable.",What might be the consequence for the learning algorithm if we don't scale features with different value ranges?,1,Features can have different value ranges,SUPPORTED,,
+65,gpt-4o,comprehension,"If you choose to leave a feature as numeric, it is typically useful to scale it, so that it tends to be in the range [-1, +1]. Without performing this transformation, if you have one feature with much larger values than another, it will take the learning algorithm a lot of work to find parameters that can put them on an equal basis. So, we might perform transformation phi(x) = - {x}sigma, where is the average of the x^(i), and sigma is the standard deviation of the x^(i). The resulting feature values will have mean 0 and standard deviation 1. This transformation is sometimes called standardizing a variable.",What might be the consequence for the learning algorithm if we don't scale features with different value ranges?,2,Feature scaling is a technique that can be applied to features with different value ranges,SUPPORTED,,
+66,gpt-4o,comprehension,"If you choose to leave a feature as numeric, it is typically useful to scale it, so that it tends to be in the range [-1, +1]. Without performing this transformation, if you have one feature with much larger values than another, it will take the learning algorithm a lot of work to find parameters that can put them on an equal basis. So, we might perform transformation phi(x) = - {x}sigma, where is the average of the x^(i), and sigma is the standard deviation of the x^(i). The resulting feature values will have mean 0 and standard deviation 1. This transformation is sometimes called standardizing a variable.",What might be the consequence for the learning algorithm if we don't scale features with different value ranges?,3,Not scaling features with different value ranges has a consequence for the learning algorithm,SUPPORTED,,
+67,gpt-4o,comprehension,"If you choose to leave a feature as numeric, it is typically useful to scale it, so that it tends to be in the range [-1, +1]. Without performing this transformation, if you have one feature with much larger values than another, it will take the learning algorithm a lot of work to find parameters that can put them on an equal basis. So, we might perform transformation phi(x) = - {x}sigma, where is the average of the x^(i), and sigma is the standard deviation of the x^(i). The resulting feature values will have mean 0 and standard deviation 1. This transformation is sometimes called standardizing a variable.",What might be the consequence for the learning algorithm if we don't scale features with different value ranges?,4,Learning algorithms are affected by the scale of input features,SUPPORTED,,
+68,claude-sonnet-4-6,comprehension,"Given two modules _1 and _2 their tuple
+
+M = (M _ 1, M _ 2)
+
+is the module with attributes:
+
+I. M.forward = (M_1.forward,M_2.forward)
+II. M.sensitivity = _1 .sensitivity ^+ _2 .sensitivity
+III. M.mass = _1 .mass ^+ _2 .mass
+IV. M.norm = (p*M_1.norm,q*M_2.norm)
+
+where p = M.mass / M_1.mass
+
+q = M. m a s s / M _ 2. m a s s","What do the values of p and q represent in terms of the masses of M1, M2, and M, and how might that relationship affect which term ends up dominating?",—,(no presuppositions extracted — vacuous response),VACUOUS,N/A — skip this row,
+69,claude-sonnet-4-6,comprehension,"Example: Let h be the linear classifier defined by theta = 1 -1 , theta_0 = 1 .
+
+The diagram below shows several points classified by h , one of which is misclassified. We compute the margin for each point:
+
+y ^ (1) · theta^ {T x ^ (1) + theta_ 0}| theta | = 1 · - 2 + 1 {2} = - {2}2
+
+y ^ (2) · theta^ {T x ^ (2) + theta_ 0}| theta | = 1 · 1 + 1 {2} = 2
+
+y ^ (3) · theta^ {T x ^ (3) + theta_ 0}| theta | = - 1 · - 3 + 1 {2} = 2
+
+Note that since point x^(1) is misclassified, its margin is negative. Thus the margin for the whole data set is given by -(2)2 .","Given that the overall dataset margin is defined as the minimum margin across all points, what does it mean for the classifier's performance when even one point has a negative margin?",—,(no presuppositions extracted — vacuous response),VACUOUS,N/A — skip this row,
+70,claude-sonnet-4-6,comprehension,"To actually get the dimensions to match, we need to write this a bit more carefully, and note that it is true for any l, including l = L:
+
+{ {l o s s} W ^ {L}} _ m ^ {1 x n ^ 1} = A ^ {L - 1} _ m ^ {1 x 1} ( { {l o s s} Z ^ {L}) ^ T} _ l x n ^ {1} 8.1","What are the specific dimensions of each term in the equation — A^L-1, ( {loss} Z^L)^T, and the resulting {loss} W^L — and how do those dimensions relate to the sizes m^l and n^l indicated in the equation?",—,(no presuppositions extracted — vacuous response),VACUOUS,N/A — skip this row,
+71,gemini-2.0-flash,comprehension,"Now, we can use methods that are a bit like running averages to describe strategies for computing . The simplest method is momentum, in which we try to ""average"" recent gradient updates, so that if they have been bouncing back and forth in some direction, we take out that component of the motion. For momentum, we have
+
+V _ 0 = 0
+
+V _ t = gamma V _ t - 1 + _ W J (W _ t - 1)
+
+W _ t = W _ t - 1 - V _ t","Given that V_t is a weighted average of the previous velocity and the current gradient, how does the hyperparameter gamma (gamma) control the influence of past gradients on the current update direction?",—,(no presuppositions extracted — vacuous response),VACUOUS,N/A — skip this row,
+72,gemini-2.0-flash,comprehension,"An alternative strategy for learning the Q function that is somewhat more robust than the standard Q-learning algorithm is a method called fitted Q.
+
+FITTED-Q-LEARNING(A, s₀, γ, α, ε, m)
+
+1. s = s_0 // Or draw an s randomly from S
+2. D =
+3. initialize neural-network representation of Q
+4. while True:
+5. D_new = experience from executing epsilon-greedy policy based on Q for m steps
+6. D = D D_new represented as (s, a, r, s') tuples
+7. _sup = {(x^(i),y^(i))) where x^(i) = (s,a) and y^(i) = r + gamma _a' AQ(s',a')
+8. for each tuple (s,a,r,s')^(i) D
+9. re-initialize neural-network representation of Q
+10. Q = supervised_NN_regression(Dsup)
+
+Here, we alternate between using the policy induced by the current Q function to gather a batch of data D_new, adding it to our overall data set D, and then using supervised neural-network training to learn a representation of the Q value function on the whole data set. This method does not mix the dynamic-programming phase (computing new Q values based on old ones) with the function approximation phase (training the neural network) and avoids catastrophic forgetting.","That's a great summary!
+
+Given that D_sup is used to train the neural network, how does the algorithm use the data tuples (s, a, r, s') to construct the input-output pairs (x^(i), y^(i)) for supervised learning?",—,(no presuppositions extracted — vacuous response),VACUOUS,N/A — skip this row,
+73,gemini-2.0-flash,comprehension,"Now, we'll look at the second factor in equation 3.1. We note that since (x^(i),y^(i)) is classified incorrectly, y^(i)(theta^(k - 1)^Tx^(i))<=slant 0 . Thus,
+
+| theta^ (k) | ^ 2 = | theta^ (k - 1) + y ^ (i) x ^ (i) | ^ 2 = | theta^ (k - 1) | ^ 2 + 2 y ^ (i) theta^ (k - 1) ^ { {T}} x ^ (i) + | x ^ (i) | ^ 2 <=slant | theta^ (k - 1) | ^ 2 + R ^ 2 <=slant k R ^ 2
+
+where we have additionally applied the assumption from (b) and then again used simple induction.",How does the condition y^(i)(theta^(k-1)^Tx^(i)) <= 0 contribute to the bound on the norm of the updated parameter vector?,—,(no presuppositions extracted — vacuous response),VACUOUS,N/A — skip this row,
+74,gpt-4o,confusion,"Given two modules _1 and _2 their tuple
+
+M = (M _ 1, M _ 2)
+
+is the module with attributes:
+
+I. M.forward = (M_1.forward,M_2.forward)
+II. M.sensitivity = _1 .sensitivity ^+ _2 .sensitivity
+III. M.mass = _1 .mass ^+ _2 .mass
+IV. M.norm = (p*M_1.norm,q*M_2.norm)
+
+where p = M.mass / M_1.mass
+
+q = M. m a s s / M _ 2. m a s s","What might be the reason for combining the sensitivities of two modules by simply adding them, considering how attributes might accumulate or interact in a system?",1,Two modules each have a sensitivity value,SUPPORTED,,
+75,gpt-4o,confusion,"Given two modules _1 and _2 their tuple
+
+M = (M _ 1, M _ 2)
+
+is the module with attributes:
+
+I. M.forward = (M_1.forward,M_2.forward)
+II. M.sensitivity = _1 .sensitivity ^+ _2 .sensitivity
+III. M.mass = _1 .mass ^+ _2 .mass
+IV. M.norm = (p*M_1.norm,q*M_2.norm)
+
+where p = M.mass / M_1.mass
+
+q = M. m a s s / M _ 2. m a s s","What might be the reason for combining the sensitivities of two modules by simply adding them, considering how attributes might accumulate or interact in a system?",2,The sensitivities of two modules can be combined into a single value,SUPPORTED,,
+76,gpt-4o,confusion,"Given two modules _1 and _2 their tuple
+
+M = (M _ 1, M _ 2)
+
+is the module with attributes:
+
+I. M.forward = (M_1.forward,M_2.forward)
+II. M.sensitivity = _1 .sensitivity ^+ _2 .sensitivity
+III. M.mass = _1 .mass ^+ _2 .mass
+IV. M.norm = (p*M_1.norm,q*M_2.norm)
+
+where p = M.mass / M_1.mass
+
+q = M. m a s s / M _ 2. m a s s","What might be the reason for combining the sensitivities of two modules by simply adding them, considering how attributes might accumulate or interact in a system?",3,One method of combining the two sensitivities is by adding them,SUPPORTED,,
+77,gpt-4o,confusion,"Given two modules _1 and _2 their tuple
+
+M = (M _ 1, M _ 2)
+
+is the module with attributes:
+
+I. M.forward = (M_1.forward,M_2.forward)
+II. M.sensitivity = _1 .sensitivity ^+ _2 .sensitivity
+III. M.mass = _1 .mass ^+ _2 .mass
+IV. M.norm = (p*M_1.norm,q*M_2.norm)
+
+where p = M.mass / M_1.mass
+
+q = M. m a s s / M _ 2. m a s s","What might be the reason for combining the sensitivities of two modules by simply adding them, considering how attributes might accumulate or interact in a system?",4,Attributes can accumulate or interact within a system,NOT SUPPORTED,,
+78,gpt-4o,confusion,"Given two modules _1 and _2 their tuple
+
+M = (M _ 1, M _ 2)
+
+is the module with attributes:
+
+I. M.forward = (M_1.forward,M_2.forward)
+II. M.sensitivity = _1 .sensitivity ^+ _2 .sensitivity
+III. M.mass = _1 .mass ^+ _2 .mass
+IV. M.norm = (p*M_1.norm,q*M_2.norm)
+
+where p = M.mass / M_1.mass
+
+q = M. m a s s / M _ 2. m a s s","What might be the reason for combining the sensitivities of two modules by simply adding them, considering how attributes might accumulate or interact in a system?",5,The way attributes accumulate or interact provides a rationale for choosing addition as the combination operation,NOT SUPPORTED,,
+79,gpt-4o,confusion,"Now, let's figure out how to do backprop. We can start schematically: ( L)/( Z) = ( L)/( ) {Z} Z. And because dependencies only exist across the batch, but not across the unit outputs, ( L)/( Z_ij) = sum_k=1^K ( L)/( )_ik {Z_ik} Z_ij.",What do you think happens to the gradient calculations if the outputs of different units are independent from each other?,1,gradient calculations exist in the context being discussed,SUPPORTED,,
+80,gpt-4o,confusion,"Now, let's figure out how to do backprop. We can start schematically: ( L)/( Z) = ( L)/( ) {Z} Z. And because dependencies only exist across the batch, but not across the unit outputs, ( L)/( Z_ij) = sum_k=1^K ( L)/( )_ik {Z_ik} Z_ij.",What do you think happens to the gradient calculations if the outputs of different units are independent from each other?,2,neural network or similar systems have multiple units with outputs,NOT SUPPORTED,,
+81,gpt-4o,confusion,"Now, let's figure out how to do backprop. We can start schematically: ( L)/( Z) = ( L)/( ) {Z} Z. And because dependencies only exist across the batch, but not across the unit outputs, ( L)/( Z_ij) = sum_k=1^K ( L)/( )_ik {Z_ik} Z_ij.",What do you think happens to the gradient calculations if the outputs of different units are independent from each other?,3,the independence or dependence of unit outputs affects gradient calculations,SUPPORTED,,
+82,gpt-4o,confusion,"Now, let's figure out how to do backprop. We can start schematically: ( L)/( Z) = ( L)/( ) {Z} Z. And because dependencies only exist across the batch, but not across the unit outputs, ( L)/( Z_ij) = sum_k=1^K ( L)/( )_ik {Z_ik} Z_ij.",What do you think happens to the gradient calculations if the outputs of different units are independent from each other?,4,unit outputs can vary in their degree of independence from each other,NOT SUPPORTED,,
+83,gpt-4o,confusion,"A Markov decision process (MDP) is a variation on a state machine in which:
+
+- The transition function is stochastic, meaning that it defines a probability distribution over the next state given the previous state and input, but each time it is evaluated it draws a new state from that distribution.
+- The output is equal to the state (that is g is the identity function).
+- Some states (or state-action pairs) are more desirable than others.
+
+An MDP can be used to model interaction with an outside ""world,"" such as a single-player game.
+
+We will focus on the case in which S and X are finite, and will call the input set A for actions (rather than X). The idea is that an agent (a robot or a game-player) can model its environment as an MDP and try to choose actions that will drive the process into states that have high scores.
+
+Formally, an MDP is S, A, T, R, gamma where:
+
+- T: S x A x S R is a transition model, where
+
+T(s, a, s') = P(S_t = s' | S_t-1 = s, A_t-1 = a),
+
+specifying a conditional probability distribution;
+
+- R: S x A R is a reward function, where R(s, a) specifies how desirable it is to be in state s and take action a; and
+- gamma [0,1] is a discount factor, which we'll discuss in section 2.2.
+
+A policy is a function pi: S A that specifies what action to take in each state.",How might the desirability of a state change based on the action you take in that state?,1,A state has a property called desirability,SUPPORTED,,
+84,gpt-4o,confusion,"A Markov decision process (MDP) is a variation on a state machine in which:
+
+- The transition function is stochastic, meaning that it defines a probability distribution over the next state given the previous state and input, but each time it is evaluated it draws a new state from that distribution.
+- The output is equal to the state (that is g is the identity function).
+- Some states (or state-action pairs) are more desirable than others.
+
+An MDP can be used to model interaction with an outside ""world,"" such as a single-player game.
+
+We will focus on the case in which S and X are finite, and will call the input set A for actions (rather than X). The idea is that an agent (a robot or a game-player) can model its environment as an MDP and try to choose actions that will drive the process into states that have high scores.
+
+Formally, an MDP is S, A, T, R, gamma where:
+
+- T: S x A x S R is a transition model, where
+
+T(s, a, s') = P(S_t = s' | S_t-1 = s, A_t-1 = a),
+
+specifying a conditional probability distribution;
+
+- R: S x A R is a reward function, where R(s, a) specifies how desirable it is to be in state s and take action a; and
+- gamma [0,1] is a discount factor, which we'll discuss in section 2.2.
+
+A policy is a function pi: S A that specifies what action to take in each state.",How might the desirability of a state change based on the action you take in that state?,2,The desirability of a state can change,NOT SUPPORTED,,
+85,gpt-4o,confusion,"A Markov decision process (MDP) is a variation on a state machine in which:
+
+- The transition function is stochastic, meaning that it defines a probability distribution over the next state given the previous state and input, but each time it is evaluated it draws a new state from that distribution.
+- The output is equal to the state (that is g is the identity function).
+- Some states (or state-action pairs) are more desirable than others.
+
+An MDP can be used to model interaction with an outside ""world,"" such as a single-player game.
+
+We will focus on the case in which S and X are finite, and will call the input set A for actions (rather than X). The idea is that an agent (a robot or a game-player) can model its environment as an MDP and try to choose actions that will drive the process into states that have high scores.
+
+Formally, an MDP is S, A, T, R, gamma where:
+
+- T: S x A x S R is a transition model, where
+
+T(s, a, s') = P(S_t = s' | S_t-1 = s, A_t-1 = a),
+
+specifying a conditional probability distribution;
+
+- R: S x A R is a reward function, where R(s, a) specifies how desirable it is to be in state s and take action a; and
+- gamma [0,1] is a discount factor, which we'll discuss in section 2.2.
+
+A policy is a function pi: S A that specifies what action to take in each state.",How might the desirability of a state change based on the action you take in that state?,3,Actions can be taken in a state,SUPPORTED,,
+86,gpt-4o,confusion,"A Markov decision process (MDP) is a variation on a state machine in which:
+
+- The transition function is stochastic, meaning that it defines a probability distribution over the next state given the previous state and input, but each time it is evaluated it draws a new state from that distribution.
+- The output is equal to the state (that is g is the identity function).
+- Some states (or state-action pairs) are more desirable than others.
+
+An MDP can be used to model interaction with an outside ""world,"" such as a single-player game.
+
+We will focus on the case in which S and X are finite, and will call the input set A for actions (rather than X). The idea is that an agent (a robot or a game-player) can model its environment as an MDP and try to choose actions that will drive the process into states that have high scores.
+
+Formally, an MDP is S, A, T, R, gamma where:
+
+- T: S x A x S R is a transition model, where
+
+T(s, a, s') = P(S_t = s' | S_t-1 = s, A_t-1 = a),
+
+specifying a conditional probability distribution;
+
+- R: S x A R is a reward function, where R(s, a) specifies how desirable it is to be in state s and take action a; and
+- gamma [0,1] is a discount factor, which we'll discuss in section 2.2.
+
+A policy is a function pi: S A that specifies what action to take in each state.",How might the desirability of a state change based on the action you take in that state?,4,The action taken in a state can affect the desirability of that state,SUPPORTED,,
+87,gpt-4o,confusion,"A Markov decision process (MDP) is a variation on a state machine in which:
+
+- The transition function is stochastic, meaning that it defines a probability distribution over the next state given the previous state and input, but each time it is evaluated it draws a new state from that distribution.
+- The output is equal to the state (that is g is the identity function).
+- Some states (or state-action pairs) are more desirable than others.
+
+An MDP can be used to model interaction with an outside ""world,"" such as a single-player game.
+
+We will focus on the case in which S and X are finite, and will call the input set A for actions (rather than X). The idea is that an agent (a robot or a game-player) can model its environment as an MDP and try to choose actions that will drive the process into states that have high scores.
+
+Formally, an MDP is S, A, T, R, gamma where:
+
+- T: S x A x S R is a transition model, where
+
+T(s, a, s') = P(S_t = s' | S_t-1 = s, A_t-1 = a),
+
+specifying a conditional probability distribution;
+
+- R: S x A R is a reward function, where R(s, a) specifies how desirable it is to be in state s and take action a; and
+- gamma [0,1] is a discount factor, which we'll discuss in section 2.2.
+
+A policy is a function pi: S A that specifies what action to take in each state.",How might the desirability of a state change based on the action you take in that state?,5,Different actions in the same state can lead to different desirability values for that state,SUPPORTED,,
+88,claude-sonnet-4-6,confusion,"The weights are the values defining the filter: there will be m^l different k^l x k^l x m^l-1 tensors of weight values; plus each filter may have a bias term, which means there is one more weight value per filter. A filter with a bias operates just like the filter examples above, except we add the bias to the output. For instance, if we incorporated a bias term of 0.5 into the filter F_2 above, the output would be (-0.5, 0.5, -0.5, 0.5, -1.5, 1.5, -0.5, 0.5) instead of (-1, 0, -1, 0, -2, 1, -1, 0).","Looking at the example in the context, where adding a bias of 0.5 to filter F₂ changes every single element of the output — for instance, the first element goes from -1 to -0.5, and the second from 0 to 0.5 — what pattern do you notice about how each output value was affected by that 0.5 bias?",—,(no presuppositions extracted — vacuous response),VACUOUS,N/A — skip this row,
+89,claude-sonnet-4-6,confusion,"How does the test loss scale as a function of data, #parameters etc?
+
+- autoregressive Transformer
+- data: WebText2, 96GB of text, 2.29 · 10^10 tokens
+1024 token context
+- vary:
+- model size: 768 - 1.5 billion non-embedding parameters
+- data: 22M - 23B tokens
+- shape (depth, with, attention heads, ...)
+- batch size
+- compute = 6 x #parameters x batchsize x #steps
+- computation: in PF-days (petaflop/s-days)
+1 PF-day = 8.64 · 10^19 FLOPs","What do you think would happen to the test loss if you took a fixed amount of compute and spent it all on a very large model trained on very few data tokens, versus a smaller model trained on many more tokens?",—,(no presuppositions extracted — vacuous response),VACUOUS,N/A — skip this row,
+90,claude-sonnet-4-6,confusion,"Now, we can use methods that are a bit like running averages to describe strategies for computing . The simplest method is momentum, in which we try to ""average"" recent gradient updates, so that if they have been bouncing back and forth in some direction, we take out that component of the motion. For momentum, we have
+
+V _ 0 = 0
+
+V _ t = gamma V _ t - 1 + _ W J (W _ t - 1)
+
+W _ t = W _ t - 1 - V _ t","What happens when you substitute V₀ = 0 into the formula for V₁, and how does that compare to a standard gradient update step?",—,(no presuppositions extracted — vacuous response),VACUOUS,N/A — skip this row,
+91,gemini-2.0-flash,confusion,"Our theoretical results completely characterize shortcut solutions, whereby a shallow Transformer with only o(T) layers can exactly replicate the computation of an automaton on an input sequence of length T . By representing automata using the algebraic structure of their underlying transformation semigroups, we obtain O( T) -depth simulators for all automata and O(1) -depth simulators for all automata whose associated groups are sc synthetic experiments by training Transformers to simulate a wide var shortcut solutions can be learned via standard training.","Given that the text mentions ""O(1)-depth simulators for all automata whose associated groups are,"" what does ""O(1)"" (Big O notation of 1) typically imply about the relationship between depth and the input size T?",—,(no presuppositions extracted — vacuous response),VACUOUS,N/A — skip this row,
+92,gemini-2.0-flash,confusion,"Another common strategy is to simply penalize the norm of all the weights, as we did in ridge regression. This method is known as weight decay, because when we take the gradient of the objective
+
+J(W)=sum_i=1^nLoss(NN(x^(i)),y^(i);W)+lambda|W|^2
+
+we end up with an update of the form
+
+W_t =W_t-1-((_WLoss(NN(x^(i)),y^(i);W_t-1))+lambda W_t-1)
+=W_t-1(1-lambda)-(_WLoss(NN(x^(i)),y^(i);W_t-1)).
+
+This rule has the form of first “decaying” W_t-1 by a factor of (1-lambda) and then taking a gradient step.","How does the equation W_t =W_t-1(1-lambda)-(_WLoss(NN(x^(i)),y^(i);W_t-1)) relate to the gradient of the objective function J(W)=sum_i=1^nLoss(NN(x^(i)),y^(i);W)+lambda|W|^2?",—,(no presuppositions extracted — vacuous response),VACUOUS,N/A — skip this row,
+93,gemini-2.0-flash,confusion,"Hinge loss gives us another way, for binary classification problems, to make a smoother objective, penalizing the margins of the labeled points relative to the separator. The hinge loss is defined to be L _ {h} ( g u e s s, a c t u a l) = (1 - g u e s s · a c t u a l, 0), when actual +1, -1 . It has the property that, if the sign of guess is the same as the sign of actual and the magnitude of guess is greater than 1, then the loss is 0.",Consider the two cases where the signs match and where they don't. In which of those cases does increasing the magnitude of the `guess` *decrease* the loss?,—,(no presuppositions extracted — vacuous response),VACUOUS,N/A — skip this row,

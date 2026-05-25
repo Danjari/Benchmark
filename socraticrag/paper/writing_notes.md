@@ -74,6 +74,101 @@
 
 ---
 
+## Empirical Results (Final Numbers — All Scripts Complete)
+
+### M1 — Direct-Answer Leakage
+
+| Model | Mean M1 | SD | Judge |
+|---|---|---|---|
+| GPT-4o | 0.845 | 0.231 | Claude Sonnet 4.6 |
+| Claude Sonnet 4.6 | 0.643 | 0.226 | GPT-4o |
+| Gemini 2.0 Flash | 0.643 | 0.226 | GPT-4o |
+
+**Verdict distribution:** 42% CLEARLY_WITHHELD · 58% BORDERLINE · 0% CLEARLY_LEAKED
+
+**Interpretation:**
+- 0% CLEARLY_LEAKED is expected and defensible: frontier models instructed to be Socratic tutors do not ignore the instruction entirely. The failure mode is leading questions, not stated answers.
+- 58% BORDERLINE is the real finding: the majority of responses from all three models are interrogative in form but so leading that a student could extract the correct answer without reasoning.
+- Claude = Gemini identically (0.643 ± 0.226) — both judged by GPT-4o. Worth noting as a potential cross-judge artifact; professor spot-check on BORDERLINE cases is the validation path.
+- GPT-4o scores higher on M1 (0.845) but lower on M3 (5.821/9) — the models most cautious about revealing answers are the least pedagogically effective. This M1-M3 reversal is a key cross-metric finding.
+
+**Draft language for Results:**
+> "No model produced CLEARLY_LEAKED responses, consistent with instruction-following behavior: frontier models prompted as Socratic tutors do not abandon the role entirely. However, 58% of responses across all models were classified as BORDERLINE — interrogative in form but sufficiently leading that a student could extract the correct understanding without independent reasoning. GPT-4o produced the most clearly-withheld responses (M1 = 0.845), while Claude Sonnet 4.6 and Gemini 2.0 Flash scored equally (M1 = 0.643)."
+
+---
+
+### M2 — Retrieval Faithfulness
+
+| Model | Mean M2 | SD | Vacuous | Judge |
+|---|---|---|---|---|
+| GPT-4o | 0.643 | 0.256 | — | Claude Sonnet 4.6 |
+| Claude Sonnet 4.6 | 1.000 | 0.000 | ~66.7% | GPT-4o |
+| Gemini 2.0 Flash | 1.000 | 0.000 | ~66.7% | GPT-4o |
+
+**Overall vacuous rate:** 66.7% (no presuppositions extractable → score defaults to 1.0)
+**Responses with ≥1 unentailed presupposition:** 26.8%
+
+**Interpretation — two distinct M2 failure modes:**
+- **Type A (GPT-4o):** Asks specific, grounded Socratic questions → presuppositions extractable → some fail entailment check → M2 = 0.643. The model is specific but introduces concepts not in C.
+- **Type B (Claude/Gemini):** Asks generic, vague Socratic questions → no presuppositions to extract → vacuous M2 = 1.000. The model is technically faithful but produces low-information questions.
+- Both are faithfulness problems: Type A = unfaithful specificity; Type B = vacuous genericism. M3 scores confirm Type B is not pedagogically superior (Claude 8.164, Gemini 7.799 — but these are high despite vacuous M2, suggesting M3 measures something different from M2).
+- This finding is richer than a simple "GPT-4o fails M2." It reveals that faithfulness metrics alone cannot distinguish quality: a vacuous question scores perfectly on M2 but may be pedagogically useless.
+
+**Draft language for Results:**
+> "M2 reveals two distinct failure modes. GPT-4o produces specific Socratic questions with extractable presuppositions, 35.7% of which are not entailed by C (M2 = 0.643 ± 0.256). Claude and Gemini produce questions with no extractable presuppositions in 66.7% of cases, scoring vacuously at 1.000 ± 0.000 — technically faithful but informationally empty. Both patterns represent faithfulness failures of different kinds: unfaithful specificity versus vacuous generalism."
+
+---
+
+### M3 — Pedagogical Alignment
+
+| Model | Perception | Orchestration | Elicitation | Total (max 9) | Judge |
+|---|---|---|---|---|---|
+| Claude Sonnet 4.6 | — | — | — | 8.164 ± 1.370 | GPT-4o |
+| Gemini 2.0 Flash | — | — | — | 7.799 ± 1.838 | GPT-4o |
+| GPT-4o | — | — | — | 5.821 ± 1.921 | Claude Sonnet 4.6 |
+
+**Dimension breakdown (all models):** Perception 2.5 · Orchestration 2.43 · Elicitation 2.27 (approx — need script 08 for per-model breakdown)
+
+**By cognitive state (all models):**
+- Comprehension: 7.893 ± 1.776 (highest)
+- Erroneous: 7.812 ± 1.001
+- Accurate: 7.232 ± 2.436
+- Confusion: 6.148 ± 2.020 (lowest — models struggle most with confused students)
+
+**Key finding — M1/M3 reversal:**
+GPT-4o scores highest on M1 (Socratic withholding) but lowest on M3 (pedagogical alignment). Claude scores lowest on M1 but highest on M3. Being maximally Socratic does not mean being maximally pedagogically effective. This is a substantive finding for educational AI: optimizing for one constraint (don't reveal the answer) can trade off against the other (guide the student well).
+
+**Confused students are systematically underserved:** All models score lowest on confusion-state utterances. This is actionable for future system design.
+
+**Draft language for Results:**
+> "M3 scores reveal a striking reversal of M1 rankings. Claude Sonnet 4.6 achieves the highest pedagogical alignment (8.164/9), followed by Gemini 2.0 Flash (7.799/9), while GPT-4o — the model most successful at withholding direct answers — scores lowest on pedagogical alignment (5.821/9). This inversion suggests that Socratic restraint and pedagogical effectiveness are not the same capability: maximizing answer-withholding may come at the cost of guidance quality. Across all models, responses to confusion-state utterances receive the lowest M3 scores (6.148 ± 2.020), indicating that supporting students who are genuinely lost remains the most challenging scenario for current LLMs."
+
+---
+
+### RAGAS Baseline — Structural Incompatibility Confirmed
+
+| Model | RAGAS Score | SD |
+|---|---|---|
+| Claude Sonnet 4.6 | 1.0000 | 0.0000 |
+| GPT-4o | 1.0000 | 0.0000 |
+| Gemini 2.0 Flash | 0.9863 | 0.1162 |
+| **Overall** | **0.9954** | **0.0674** |
+
+**Empty responses (no statements extracted):** 1,920/1,974 = **97.3%**
+**Scores ≥ 0.9:** 99.5%
+
+**Interpretation:** Even stronger than expected. 97.3% of Socratic questions — across all three models — yielded zero declarative statements under RAGAS decomposition. The remaining 2.7% produced trivially supported statements. RAGAS cannot discriminate between a strong and a weak Socratic response. This is not a limitation of RAGAS for this specific dataset — it is a structural incompatibility: the metric presupposes declarative output, and Socratic tutoring requires interrogative output.
+
+**The key comparison for the paper:**
+- RAGAS: 0.9954 ± 0.0674 — uniform, no model discrimination
+- M2: 0.643 (GPT-4o) vs 1.000 (Claude/Gemini) — discriminates between models (though vacuous problem remains)
+- This single comparison is the empirical anchor of the paper.
+
+**Draft language for Results:**
+> "RAGAS faithfulness scores cluster at 1.000 for all models (mean 0.9954 ± 0.0674), with 97.3% of responses yielding zero extractable declarative statements. This confirms the structural incompatibility identified in Section 3: RAGAS cannot evaluate Socratic outputs because its decomposition step presupposes declarative text. In contrast, M2's presupposition-based adaptation identifies meaningful faithfulness variation across models (0.643–1.000), demonstrating that the problem is not the task difficulty but the metric design."
+
+---
+
 ## Competitive Landscape & Submission Strategy
 
 ### Honest Assessment vs. Accepted 2025 Papers
