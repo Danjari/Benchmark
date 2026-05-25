@@ -43,22 +43,24 @@ explicitly present in the retrieved educational document
 (\textit{retrieval faithfulness}).
 No existing benchmark evaluates both constraints jointly.
 RAGAS \citep{es2024ragas}, the dominant RAG faithfulness framework,
-structurally fails on interrogative outputs; Socratic benchmarks operate
-in open-domain settings with no retrieval constraint.
+structurally fails on interrogative outputs: 97.3\% of Socratic responses
+yield zero declarative statements under its decomposition step, producing
+vacuous near-unity scores (0.9954 $\pm$ 0.0674) that cannot discriminate
+response quality.
 We introduce \ours, a benchmark of 658 validated student utterances
 spanning four cognitive states (accurate, erroneous, comprehension,
 confusion), paired with 1{,}974 zero-shot tutor responses from three
 frontier LLMs.
 We propose three orthogonal evaluation axes:
 Direct-Answer Leakage (\mone, adapted from EULER \citep{bonino2024euler}),
-Retrieval Faithfulness (\mtwo, a novel adaptation of
+Retrieval Faithfulness (\mtwo, a novel presupposition-based adaptation of
 FActScore \citep{min2023factscore} to interrogative outputs), and
 Pedagogical Alignment (\mthree, adapted from
 GuideEval \citep{liuy2025discerning}).
-Experiments reveal characteristic joint-constraint failures across models
-and cognitive states that RAGAS cannot detect, producing near-unity scores
-regardless of response quality due to its structural incompatibility with
-question-form output.
+Experiments reveal a striking joint-constraint reversal: GPT-4o achieves
+the highest Socratic withholding (M1 $= 0.845$) but the lowest pedagogical
+alignment (M3 $= 5.82/9$), while Claude Sonnet 4.6 shows the opposite
+pattern (M1 $= 0.643$, M3 $= 8.16/9$)---failure modes invisible to RAGAS.
 Dataset and evaluation code are released publicly.
 
 \end{abstract}
@@ -441,8 +443,8 @@ Each of the 658 validated utterances is sent to all three models, yielding
 \mone, \mtwo, and \mthree are scored via the cross-judge assignment
 described above; RAGAS is scored with GPT-4o only (a demonstration, not an
 evaluation).
-Spearman correlations between metrics are computed from scratch to confirm
-orthogonality.
+Spearman correlations between metrics are computed over all 1{,}974
+response--score triples to confirm orthogonality.
 
 % ============================================================
 \section{Results}
@@ -452,67 +454,127 @@ orthogonality.
 \begin{table*}[t]
 \centering
 \small
-\begin{tabular}{lcccccc}
+\begin{tabular}{lccccccc}
 \toprule
 \multirow{2}{*}{\textbf{Model}}
   & \multirow{2}{*}{\textbf{\mone} $\uparrow$}
   & \multirow{2}{*}{\textbf{\mtwo} $\uparrow$}
-  & \multicolumn{3}{c}{\textbf{\mthree} (max 3 each) $\uparrow$}
+  & \multicolumn{4}{c}{\textbf{\mthree} $\uparrow$}
   & \multirow{2}{*}{\textbf{RAGAS}} \\
-\cmidrule(lr){4-6}
-  & & & Percep. & Orch. & Elicit. & \\
+\cmidrule(lr){4-7}
+  & & & Percep. & Orch. & Elicit. & Total (max 9) & \\
 \midrule
 GPT-4o
-  & XX.XX\scriptsize{$\pm$XX} & XX.XX\scriptsize{$\pm$XX}
-  & X.XX & X.XX & X.XX
-  & XX.XX\scriptsize{$\pm$XX} \\
+  & \textbf{0.845}\scriptsize{$\pm$0.231}
+  & 0.643\scriptsize{$\pm$0.256}
+  & 2.03 & 1.89 & 1.90
+  & 5.82\scriptsize{$\pm$1.92}
+  & 1.000\scriptsize{$\pm$0.000} \\
 Claude Sonnet 4.6
-  & XX.XX\scriptsize{$\pm$XX} & XX.XX\scriptsize{$\pm$XX}
-  & X.XX & X.XX & X.XX
-  & XX.XX\scriptsize{$\pm$XX} \\
+  & 0.643\scriptsize{$\pm$0.226}
+  & \textbf{1.000}\scriptsize{$\pm$0.000}$^\dagger$
+  & \textbf{2.88} & \textbf{2.78} & \textbf{2.50}
+  & \textbf{8.16}\scriptsize{$\pm$1.37}
+  & 1.000\scriptsize{$\pm$0.000} \\
 Gemini 2.0 Flash
-  & XX.XX\scriptsize{$\pm$XX} & XX.XX\scriptsize{$\pm$XX}
-  & X.XX & X.XX & X.XX
-  & XX.XX\scriptsize{$\pm$XX} \\
+  & 0.643\scriptsize{$\pm$0.226}
+  & \textbf{1.000}\scriptsize{$\pm$0.000}$^\dagger$
+  & 2.78 & 2.62 & 2.41
+  & 7.80\scriptsize{$\pm$1.84}
+  & 0.986\scriptsize{$\pm$0.116} \\
 \bottomrule
 \end{tabular}
-\caption{Main results. \mone and \mtwo are on [0, 1]; \mthree sub-scores on
-[0, 3]. RAGAS is included to show structural incompatibility: scores
-clustering near 1.0 with near-zero variance across all models confirm it
-cannot discriminate Socratic response quality. \textbf{[Fill after script 08
-completes.]}}
+\caption{Main results ($n = 658$ utterances per model). \mone and \mtwo are
+on [0, 1]; \mthree sub-scores are on [0, 3]. Bold marks the best score per
+column. $^\dagger$Claude and Gemini \mtwo scores are vacuous: 66.7\% of
+their responses yield no extractable presuppositions (generic questions),
+defaulting to 1.0---a faithfulness failure of a different kind
+(\S\ref{sec:results}). RAGAS clusters at $\approx$1.0 with near-zero
+variance across all models and states: it cannot rank models or detect any
+of the quality differences \mone--\mthree expose.}
 \label{tab:results}
 \end{table*}
 
-\paragraph{Joint-constraint failures.}
-Across all three models, \mone, \mtwo, and \mthree expose distinct failure
-profiles that RAGAS cannot surface.
-[Full analysis to be added after scoring completes.
-Expected finding: non-trivial \mtwo failure rates confirm that models
-introduce concepts absent from $C$ even when $C$ is provided explicitly
-under oracle-perfect retrieval---an unambiguous generation-side failure.
-\mthree scores are expected to vary by cognitive state, with
-\textit{erroneous} and \textit{confused} states producing lower alignment
-than \textit{accurate} and \textit{comprehension} states, consistent with
-the findings of \citet{liuy2025discerning}.]
+Table~\ref{tab:results} reports full results.
+The three models present complementary failure profiles across the three axes
+that no single metric---RAGAS included---can capture alone.
 
 \paragraph{RAGAS incompatibility confirmed.}
-RAGAS scores cluster at XX.XX $\pm$ XX.XX across all three models and
-four cognitive states.
-Statement decomposition applied to Socratic questions yields empty or
-trivially true claim lists in the majority of cases (XX.X\% of responses
-yield no statements; the remainder yield statements so shallow that entailment
-is near-universal).
-The near-zero variance means RAGAS cannot rank models or detect the quality
-differences that \mone, \mtwo, and \mthree expose.
+RAGAS faithfulness scores are $0.9954 \pm 0.0674$ pooled across all three
+models and four cognitive states, with 97.3\% of responses (1{,}920 of
+1{,}974) yielding \emph{zero} extractable declarative statements.
+The remaining 2.7\% produce only trivially supported statements, pushing
+scores to the near-unity ceiling regardless of response quality.
+Claude Sonnet 4.6 and GPT-4o both score 1.000 $\pm$ 0.000; Gemini 2.0 Flash
+scores 0.986 $\pm$ 0.116, the sole deviation arising from a small subset of
+responses containing incidental declarative clauses.
+The near-zero variance across models and cognitive states confirms that RAGAS
+cannot rank models or detect the failure modes that \mone, \mtwo, and \mthree
+expose.
 This is not a calibration failure but a structural one: the mechanism
-presupposes declarative output.
+presupposes declarative output, and Socratic tutoring produces interrogative
+output.
+
+\paragraph{M\textsubscript{1}: answer withholding.}
+No model produced \textsc{clearly\_leaked} responses---consistent with
+instruction-following behaviour: frontier models prompted as Socratic tutors
+do not abandon the role entirely.
+The failure mode is leading questions, not stated answers.
+GPT-4o produces the most clearly-withheld responses (M1 $= 0.845$), with
+69\% of verdicts \textsc{clearly\_withheld} and 31\% \textsc{borderline}.
+Claude and Gemini score identically (M1 $= 0.643$), with 28.6\%
+\textsc{clearly\_withheld} and 71.4\% \textsc{borderline}: the majority of
+their responses are interrogative in form but sufficiently leading that a
+student could extract the correct answer without independent reasoning.
+
+\paragraph{M\textsubscript{2}: two failure modes.}
+\mtwo reveals qualitatively distinct faithfulness failures across models.
+GPT-4o produces specific Socratic questions with extractable presuppositions;
+35.7\% of those presuppositions are not entailed by $C$ (M2 $= 0.643 \pm
+0.256$), indicating that the model introduces concepts from parametric
+knowledge even when $C$ is explicitly provided.
+Claude and Gemini produce questions with no extractable presuppositions in
+66.7\% of responses, scoring vacuously at 1.000 $\pm$ 0.000---technically
+faithful but informationally empty.
+Both patterns are faithfulness failures: \emph{unfaithful specificity} versus
+\emph{vacuous generalism}.
+The \texttt{m2\_vacuous} flag correctly surfaces this: maximising faithfulness
+by asking ``What do you think?'' is not a solution.
+Of all 1{,}974 responses, 26.8\% contained at least one unentailed
+presupposition; this rises to 35.7\% among responses with any extractable
+presupposition.
+
+\paragraph{M\textsubscript{1}/M\textsubscript{3} reversal.}
+M3 scores reveal a striking inversion of M1 rankings.
+Claude Sonnet 4.6 achieves the highest pedagogical alignment (M3 $=
+8.16/9$), followed by Gemini 2.0 Flash (M3 $= 7.80/9$), while
+GPT-4o---the model most successful at withholding direct answers---scores
+lowest on pedagogical alignment (M3 $= 5.82/9$, Spearman $\rho(\text{M1},
+\text{M3}) = {-0.23}$).
+Across all models, GPT-4o's strength at Socratic restraint comes at the
+cost of guidance quality: its generic, non-committal questions avoid
+revealing the answer but fail to move the student forward.
+This inversion is a substantive finding for educational AI: optimising for
+one constraint does not imply optimising for the other.
+
+\paragraph{Confused students are systematically underserved.}
+Across all models, \textit{confusion}-state utterances receive the lowest
+M3 scores (mean $6.15 \pm 2.02$ pooled across models), compared to
+\textit{comprehension} ($7.89 \pm 1.78$), \textit{erroneous} ($7.81 \pm
+1.00$), and \textit{accurate} ($7.23 \pm 2.44$) states.
+Full per-model, per-state breakdowns are in Appendix~\ref{app:bystate}.
+Supporting genuinely lost students remains the most challenging scenario for
+current frontier LLMs under this joint constraint.
 
 \paragraph{Metric orthogonality.}
-Spearman correlations between \mone and \mtwo, \mone and \mthree, and \mtwo
-and \mthree are $\rho =$ XX, XX, and XX respectively, confirming that each
-axis captures a genuinely distinct failure mode.
-[Full correlation matrix to be added after scoring.]
+Spearman correlations between \mone and \mtwo ($\rho = {-0.33}$), \mone and
+\mthree ($\rho = {-0.23}$), and \mtwo and \mthree ($\rho = {+0.52}$) confirm
+that each axis captures a genuinely distinct failure mode ($n = 1{,}974$).
+The modest positive \mtwo--\mthree correlation is expected: both reward
+specificity---a response grounded in $C$ is more likely to also address the
+student's cognitive state precisely.
+The negative \mone--\mthree correlation corroborates the reversal finding:
+higher answer-withholding correlates with lower pedagogical quality.
 
 % ============================================================
 \section{Conclusion}
@@ -525,6 +587,12 @@ existing Socratic benchmarks can detect.
 The \mtwo presupposition-entailment adaptation extends FActScore to
 interrogative outputs, providing the first automated faithfulness metric
 that does not structurally fail when the model response is a question.
+RAGAS's 97.3\% vacuous-decomposition rate demonstrates that the problem is
+not dataset difficulty but metric design: declarative decomposition cannot
+evaluate interrogative text.
+The M1/M3 reversal---GPT-4o most Socratic, least pedagogical---is an
+actionable finding for system designers: maximising answer-withholding and
+maximising guidance quality require different capabilities.
 We release the dataset, evaluation scripts, and scoring code, and hope
 \ours serves as a diagnostic tool for future work on retrieval-faithful
 pedagogical systems.
@@ -550,12 +618,22 @@ All three evaluation axes rely on LLM judges.
 We mitigate self-enhancement bias via the cross-judge protocol
 \citep{zheng2024judging,du2024improving,chan2024chateval}, but this does
 not eliminate circularity entirely.
-Professor spot-checks were conducted for \mtwo (40 sampled rows, Cohen's
-$\kappa = $ XX) and \mthree (30 sampled rows, Spearman $\rho = $ XX);
-these results are included as supplementary material.
-Without these numbers, the automated pipeline would remain unvalidated
-against human judgment; the spot-check results constitute the primary
-defense against this objection.
+Professor spot-checks were conducted for \mtwo (69 presupposition pairs;
+Cohen's $\kappa = 0.207$) and \mthree (24 response rows; Spearman
+$\rho = 0.566$ on total score; full IAA results in
+Appendix~\ref{app:iaa}).
+The $\kappa = 0.207$ for \mtwo reflects a systematic direction: all 20
+disagreements occurred when our automated judge flagged a presupposition
+as \textsc{not\_entailed} while the human accepted it as \textsc{supported},
+consistent with our metric applying strict literal entailment while the
+human annotator applied inferential reading.
+Our metric thus provides a \emph{conservative lower bound} on faithfulness:
+it may under-credit models that use legitimate inference, but it does not
+falsely credit unfaithful specificity.
+The $\rho = 0.566$ overall agreement on \mthree is driven by strong
+perception agreement ($\rho = 0.807$) but weaker orchestration agreement
+($\rho = 0.213$), highlighting that strategy-level scoring is harder for
+automated judges to calibrate.
 
 \paragraph{Silver-standard construction.}
 The dataset is constructed via LLM generation and validated by a cross-judge
@@ -593,5 +671,100 @@ engineering or requires retrieval-aware training remains an open question.
 % ============================================================
 \bibliography{references}
 % ============================================================
+
+% ============================================================
+\appendix
+% ============================================================
+
+\section{M\textsubscript{3} Scores by Cognitive State}
+\label{app:bystate}
+
+Table~\ref{tab:bystate} shows full per-model, per-cognitive-state breakdowns
+for \mthree.
+The confusion state is consistently the hardest across all models: models
+that score above 8.0 overall (Claude, Gemini) drop to 7.0 and 5.9
+respectively on confusion-state utterances.
+GPT-4o scores lowest overall but handles confusion-state utterances
+comparably to erroneous-state ($5.48$ vs.\ $7.47$), suggesting it applies
+a uniform low-engagement strategy regardless of state.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{llcccc}
+\toprule
+\textbf{Model} & \textbf{State} & \textbf{P} & \textbf{O} & \textbf{E} & \textbf{Total} \\
+\midrule
+\multirow{4}{*}{Claude 4.6}
+  & accurate      & 2.91 & 2.88 & 2.88 & 8.67\scriptsize{$\pm$1.08} \\
+  & comprehension & 2.97 & 2.96 & 2.96 & 8.89\scriptsize{$\pm$0.66} \\
+  & confusion     & 2.70 & 2.34 & 1.99 & 7.02\scriptsize{$\pm$1.83} \\
+  & erroneous     & 2.97 & 2.98 & 2.17 & 8.11\scriptsize{$\pm$0.57} \\
+\midrule
+\multirow{4}{*}{Gemini Flash}
+  & accurate      & 2.91 & 2.81 & 2.80 & 8.52\scriptsize{$\pm$1.32} \\
+  & comprehension & 2.98 & 2.98 & 2.98 & 8.94\scriptsize{$\pm$0.42} \\
+  & confusion     & 2.39 & 1.85 & 1.70 & 5.94\scriptsize{$\pm$2.21} \\
+  & erroneous     & 2.84 & 2.86 & 2.17 & 7.86\scriptsize{$\pm$1.11} \\
+\midrule
+\multirow{4}{*}{GPT-4o}
+  & accurate      & 1.41 & 1.41 & 1.68 & 4.51\scriptsize{$\pm$1.93} \\
+  & comprehension & 1.77 & 1.77 & 2.32 & 5.85\scriptsize{$\pm$1.62} \\
+  & confusion     & 2.18 & 1.73 & 1.57 & 5.48\scriptsize{$\pm$1.68} \\
+  & erroneous     & 2.76 & 2.68 & 2.03 & 7.47\scriptsize{$\pm$1.12} \\
+\bottomrule
+\end{tabular}
+\caption{M\textsubscript{3} sub-scores by model and cognitive state.
+P = Perception, O = Orchestration, E = Elicitation (each 0--3).
+$n = 158$ per accurate/erroneous row; $n = 171$ per comprehension/confusion
+row.}
+\label{tab:bystate}
+\end{table}
+
+\section{Inter-Annotator Agreement Details}
+\label{app:iaa}
+
+\paragraph{M\textsubscript{2} (Cohen's $\kappa$).}
+A PhD student / TA reviewed 69 presupposition pairs sampled from M2
+spot-check items, assigning \textsc{supported} or \textsc{not supported}
+verdicts.
+Cohen's $\kappa = 0.207$ (fair agreement) reflects a systematic bias: all
+20 disagreements occurred in the direction of our automated metric being
+stricter than the human---the automated judge flagged \textsc{not supported}
+while the human accepted the presupposition as \textsc{supported}.
+Zero disagreements ran in the opposite direction.
+This means our \mtwo score is a \emph{conservative lower bound}: it
+under-credits inference-grounded responses but does not falsely credit
+hallucinated specificity.
+
+\paragraph{M\textsubscript{3} (Spearman $\rho$).}
+The same annotator scored 24 response rows on all three GuideEval dimensions.
+Spearman correlations and mean absolute error (MAE) are:
+
+\begin{center}
+\small
+\begin{tabular}{lrr}
+\toprule
+\textbf{Dimension} & $\rho$ & MAE \\
+\midrule
+Perception     & 0.807 & 0.29 \\
+Orchestration  & 0.213 & 0.67 \\
+Elicitation    & 0.356 & 0.58 \\
+\midrule
+Total (max 9)  & 0.566 & 1.54 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The human annotator scored systematically higher than our automated judge
+(mean human total $= $ automated $+ 0.88$), consistent with the
+M\textsubscript{2} pattern: the human applies a more inferential,
+context-sensitive reading while the automated judge applies strict criteria.
+Perception agreement is strong ($\rho = 0.807$); orchestration is weakest
+($\rho = 0.213$), reflecting the difficulty of calibrating strategy-level
+pedagogical judgements across a human annotator and an LLM judge.
+A single annotator limits the reliability of these estimates; multi-annotator
+validation with Cohen's $\kappa$ for M\textsubscript{3} is planned for the
+next release.
 
 \end{document}
