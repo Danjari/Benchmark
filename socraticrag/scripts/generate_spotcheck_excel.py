@@ -1,380 +1,484 @@
 """
 Generate professor spot-check Excel files for M2 and M3 human validation.
 
+Each workbook has two tabs:
+  1. READ ME FIRST  — full instructions, rubric, colour legend
+  2. Data sheet     — yellow columns to fill in, blue columns = our automated scores
+
 Outputs:
-  data/spotcheck_M2_professor.xlsx  — presupposition entailment verdicts
-  data/spotcheck_M3_professor.xlsx  — pedagogical alignment scoring
+  data/spotcheck_M2_professor.xlsx
+  data/spotcheck_M3_professor.xlsx
 
 Usage:
   python3 scripts/generate_spotcheck_excel.py
 """
 
 import json
+import re
 from pathlib import Path
 from openpyxl import Workbook
-from openpyxl.styles import (
-    PatternFill, Font, Alignment, Border, Side
-)
+from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
-import re
-
-M2_INPUT = Path("data/m2_spot_check.jsonl")
-M3_INPUT = Path("data/m3_spot_check.jsonl")
+M2_INPUT  = Path("data/m2_spot_check.jsonl")
+M3_INPUT  = Path("data/m3_spot_check.jsonl")
 M2_OUTPUT = Path("data/spotcheck_M2_professor.xlsx")
 M3_OUTPUT = Path("data/spotcheck_M3_professor.xlsx")
 
-# Color palette
-HEADER_FILL   = PatternFill("solid", fgColor="1F4E79")   # dark blue
-AUTO_FILL     = PatternFill("solid", fgColor="D9E2F3")   # light blue — automated scores
-PROF_FILL     = PatternFill("solid", fgColor="FFFF99")   # yellow — professor fills these
-CONTEXT_FILL  = PatternFill("solid", fgColor="F2F2F2")   # light grey — context columns
-ALT_ROW_FILL  = PatternFill("solid", fgColor="EBF3FB")   # alternating row
+# ── Colours ───────────────────────────────────────────────────────────────────
+C_HEADER_BG  = "1565C0"   # deep blue  — column headers
+C_HEADER_FG  = "FFFFFF"
+C_README_HDR = "0D47A1"   # darker blue — README section headers
+C_INSTR_BG   = "FFF8E1"   # amber      — banner row
+C_INSTR_FG   = "5D4037"
+C_SUPPORTED  = "E8F5E9"   # pale green — our verdict
+C_NOT_SUP    = "FFEBEE"   # pale red   — our verdict
+C_VACUOUS    = "F5F5F5"   # grey
+C_YOUR_BG    = "FFF9C4"   # yellow     — professor fills
+C_OUR_BG     = "DDEEFF"   # blue       — our automated scores
+C_ODD_ROW    = "FAFAFA"
+C_EVEN_ROW   = "FFFFFF"
+C_STATE = {
+    "accurate":      "E8F5E9",
+    "erroneous":     "FFEBEE",
+    "comprehension": "FFF9C4",
+    "confusion":     "F3E5F5",
+}
+SCORE_COLORS = ["FFCDD2", "FFE0B2", "FFF9C4", "C8E6C9"]  # 0=red … 3=green
 
-HEADER_FONT   = Font(bold=True, color="FFFFFF", name="Calibri", size=10)
-BODY_FONT     = Font(name="Calibri", size=9)
-BOLD_FONT     = Font(bold=True, name="Calibri", size=9)
+# ── Style helpers ─────────────────────────────────────────────────────────────
 
-WRAP = Alignment(wrap_text=True, vertical="top")
-CENTER = Alignment(horizontal="center", vertical="top")
+def fill(hex_color):
+    return PatternFill("solid", fgColor=hex_color)
 
-THIN = Side(style="thin", color="BFBFBF")
-BORDER = Border(left=THIN, right=THIN, top=THIN, bottom=THIN)
+def _font(bold=False, color="000000", size=10, italic=False):
+    return Font(bold=bold, color=color, size=size, name="Calibri", italic=italic)
 
+def wrap_align(h="left", v="top"):
+    return Alignment(horizontal=h, vertical=v, wrap_text=True)
+
+def thin_border():
+    s = Side(style="thin", color="CCCCCC")
+    return Border(left=s, right=s, top=s, bottom=s)
 
 _ILLEGAL = re.compile(r"[\x00-\x08\x0B\x0C\x0E-\x1F]")
 
-def sanitize(value):
-    """Remove characters that Excel/openpyxl cannot store in a cell."""
-    if not isinstance(value, str):
-        return value
-    return _ILLEGAL.sub("", value)
+def safe(value):
+    return _ILLEGAL.sub("", str(value)) if value is not None else ""
+
+def set_cell(ws, row, col, value, bg=None, bold=False, fg="000000",
+             h="left", v="top", size=10, border=True, italic=False):
+    cell = ws.cell(row=row, column=col, value=safe(value))
+    if bg:
+        cell.fill = fill(bg)
+    cell.font      = _font(bold=bold, color=fg, size=size, italic=italic)
+    cell.alignment = wrap_align(h=h, v=v)
+    if border:
+        cell.border = thin_border()
+    return cell
+
+def score_bg(val):
+    try:
+        return SCORE_COLORS[int(val)]
+    except (TypeError, ValueError, IndexError):
+        return "FFFFFF"
+
+# ── LaTeX stripping ───────────────────────────────────────────────────────────
+
+def strip_latex(text):
+    if not text:
+        return text
+    text = re.sub(r'\$\$(.+?)\$\$', lambda m: _latex_expr(m.group(1)), text, flags=re.DOTALL)
+    text = re.sub(r'\\\[(.+?)\\\]', lambda m: _latex_expr(m.group(1)), text, flags=re.DOTALL)
+    text = re.sub(r'\\\((.+?)\\\)', lambda m: _latex_expr(m.group(1)), text, flags=re.DOTALL)
+    text = re.sub(r'\$(.+?)\$',    lambda m: _latex_expr(m.group(1)), text)
+    text = re.sub(r'\\[a-zA-Z]+\{([^}]*)\}', r'\1', text)
+    text = re.sub(r'\\[a-zA-Z]+', '', text)
+    text = re.sub(r'  +', ' ', text)
+    return text.strip()
+
+def _latex_expr(expr):
+    expr = expr.strip()
+    replacements = [
+        (r'\\mathcal\{([^}]+)\}', r'\1'), (r'\\mathrm\{([^}]+)\}', r'\1'),
+        (r'\\mathbf\{([^}]+)\}',  r'\1'), (r'\\mathbb\{([^}]+)\}',  r'\1'),
+        (r'\\text\{([^}]+)\}',    r'\1'), (r'\\hat\{([^}]+)\}',  r'\1_hat'),
+        (r'\\tilde\{([^}]+)\}', r'\1_tilde'), (r'\\bar\{([^}]+)\}', r'\1_bar'),
+        (r'\\vec\{([^}]+)\}',     r'\1'),
+        (r'\\frac\{([^}]+)\}\{([^}]+)\}', r'(\1)/(\2)'),
+        (r'\\sqrt\{([^}]+)\}', r'sqrt(\1)'),
+        (r'\\sum', 'sum'),    (r'\\prod', 'prod'),  (r'\\int', 'integral'),
+        (r'\\infty', 'inf'),  (r'\\alpha', 'alpha'),(r'\\beta', 'beta'),
+        (r'\\gamma', 'gamma'),(r'\\delta', 'delta'),(r'\\epsilon', 'epsilon'),
+        (r'\\theta', 'theta'),(r'\\lambda', 'lambda'),(r'\\mu', 'mu'),
+        (r'\\sigma', 'sigma'),(r'\\pi', 'pi'),      (r'\\tau', 'tau'),
+        (r'\\phi', 'phi'),    (r'\\psi', 'psi'),    (r'\\omega', 'omega'),
+        (r'\\rightarrow', '->'),(r'\\leftarrow', '<-'),
+        (r'\\leq', '<='),    (r'\\geq', '>='),     (r'\\neq', '!='),
+        (r'\\approx', '≈'),  (r'\\times', 'x'),    (r'\\cdot', '·'),
+        (r'\\ldots', '...'), (r'\\mid', '|'),
+        (r'\^\{([^}]+)\}', r'^\1'), (r'_\{([^}]+)\}', r'_\1'),
+        (r'\{([^}]*)\}', r'\1'),    (r'\\[a-zA-Z]+', ''), (r'\\', ''),
+    ]
+    for p, r in replacements:
+        expr = re.sub(p, r, expr)
+    return expr.strip()
+
+_VERDICT_LABELS = {"ENTAILED": "SUPPORTED", "NOT_ENTAILED": "NOT SUPPORTED"}
+
+def human_verdict(v):
+    return _VERDICT_LABELS.get(v, v)
+
+def verdict_color(v):
+    return {"SUPPORTED": C_SUPPORTED, "NOT SUPPORTED": C_NOT_SUP}.get(v, C_VACUOUS)
+
+# ── README tab builders ───────────────────────────────────────────────────────
+
+def _readme_section(ws, row, text, is_header=False, is_subheader=False,
+                    bg=None, fg="000000", italic=False, indent=0):
+    """Write one text block into col B, spanning to col I, return next row."""
+    n_cols = 9
+    ws.merge_cells(f"B{row}:I{row}")
+    prefix = "    " * indent
+    cell = ws.cell(row=row, column=2, value=prefix + safe(text))
+    cell.font      = _font(bold=is_header or is_subheader,
+                           color=(C_README_HDR if is_header else fg),
+                           size=(13 if is_header else 11 if is_subheader else 10),
+                           italic=italic)
+    cell.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+    if bg:
+        for c in range(1, n_cols + 2):
+            ws.cell(row=row, column=c).fill = fill(bg)
+    if is_header:
+        ws.row_dimensions[row].height = 28
+    elif is_subheader:
+        ws.row_dimensions[row].height = 20
+    else:
+        ws.row_dimensions[row].height = 16
+    return row + 1
 
 
-def style_header(cell, text):
-    cell.value = text
-    cell.fill = HEADER_FILL
-    cell.font = HEADER_FONT
-    cell.alignment = CENTER
-    cell.border = BORDER
+def add_m2_readme(wb):
+    ws = wb.create_sheet("READ ME FIRST", 0)
+    ws.sheet_view.showGridLines = False
+    ws.column_dimensions["A"].width = 3
+    for col in "BCDEFGHI":
+        ws.column_dimensions[col].width = 22
+    ws.column_dimensions["B"].width = 26
+
+    r = 2
+    r = _readme_section(ws, r, "SocraticRAG Benchmark — Expert Validation",
+                        is_header=True, bg="E3F2FD")
+    r = _readme_section(ws, r, "File M2 — Retrieval Faithfulness  (~20–25 min)",
+                        is_subheader=True, bg="E3F2FD")
+    r += 1
+
+    r = _readme_section(ws, r, "WHAT THIS IS", is_subheader=True)
+    for line in [
+        "An AI tutor was given a source text (Context C) and responded to a student question.",
+        "My system extracted the factual claims embedded in those responses — called presuppositions —",
+        "and checked whether each claim is directly supported by the source text.",
+        "Your job: verify whether you agree with those checks.",
+    ]:
+        r = _readme_section(ws, r, line, indent=1)
+    r += 1
+
+    r = _readme_section(ws, r, "HOW TO FILL IN", is_subheader=True)
+    for step in [
+        "1. Go to the 'M2 Faithfulness' tab.",
+        "2. Read the Context C and Tutor Response R for each row.",
+        "3. Read the presupposition — a claim extracted from the response.",
+        "4. Ask yourself: 'Could a reader derive this claim directly from Context C?'",
+        "5. Type SUPPORTED or NOT SUPPORTED in the yellow YOUR_VERDICT column.",
+        "6. Skip rows pre-filled with 'N/A — skip' (vacuous responses with no claim).",
+    ]:
+        r = _readme_section(ws, r, step, indent=1)
+    r += 1
+
+    r = _readme_section(ws, r, "VERDICTS", is_subheader=True)
+    r = _readme_section(ws, r, "SUPPORTED       — the claim is directly derivable from Context C.",
+                        bg=C_SUPPORTED, indent=1)
+    r = _readme_section(ws, r, "NOT SUPPORTED   — the claim is absent from or contradicts Context C.",
+                        bg=C_NOT_SUP, indent=1)
+    r += 1
+
+    r = _readme_section(ws, r, "COLOUR LEGEND", is_subheader=True)
+    r = _readme_section(ws, r, "Yellow column  → fill this in (your verdict)", bg=C_YOUR_BG, indent=1)
+    r = _readme_section(ws, r, "Grey tint row  → vacuous response, skip", bg=C_VACUOUS, indent=1)
+    r += 1
+
+    r = _readme_section(ws, r, "WHAT HAPPENS WITH YOUR SCORES", is_subheader=True)
+    for line in [
+        "I will compute Cohen's κ between your verdicts and mine to validate the M2 metric for the paper.",
+        "No special knowledge of AI is required — the rubric above is self-contained.",
+        "If anything is unclear, just reply and I'll clarify.",
+    ]:
+        r = _readme_section(ws, r, line, indent=1)
+
+    wb.active = ws
 
 
-def style_context(cell, value):
-    cell.value = sanitize(value)
-    cell.fill = CONTEXT_FILL
-    cell.font = BODY_FONT
-    cell.alignment = WRAP
-    cell.border = BORDER
+def add_m3_readme(wb):
+    ws = wb.create_sheet("READ ME FIRST", 0)
+    ws.sheet_view.showGridLines = False
+    ws.column_dimensions["A"].width = 3
+    for col in "BCDEFGHIJ":
+        ws.column_dimensions[col].width = 20
+    ws.column_dimensions["B"].width = 26
+
+    r = 2
+    r = _readme_section(ws, r, "SocraticRAG Benchmark — Expert Validation",
+                        is_header=True, bg="E3F2FD")
+    r = _readme_section(ws, r, "File M3 — Pedagogical Alignment  (~20 min)",
+                        is_subheader=True, bg="E3F2FD")
+    r += 1
+
+    r = _readme_section(ws, r, "WHAT THIS IS", is_subheader=True)
+    for line in [
+        "An AI tutor responded to a student who was in one of four cognitive states:",
+        "accurate understanding, erroneous belief, comprehension gap, or confusion.",
+        "Your job: rate how well the tutor response handled the situation on three dimensions.",
+    ]:
+        r = _readme_section(ws, r, line, indent=1)
+    r += 1
+
+    r = _readme_section(ws, r, "HOW TO FILL IN", is_subheader=True)
+    for step in [
+        "1. Go to the 'M3 Pedagogical' tab.",
+        "2. Read Context C (source text), Student Utterance, and Tutor Response.",
+        "3. Rate the response on three dimensions (0–3 each) in the yellow columns.",
+        "4. Enter YOUR_P, YOUR_O, YOUR_E. Write the sum manually in YOUR_TOTAL.",
+    ]:
+        r = _readme_section(ws, r, step, indent=1)
+    r += 1
+
+    r = _readme_section(ws, r, "RUBRIC — score each dimension 0 to 3", is_subheader=True)
+    r += 1
+
+    r = _readme_section(ws, r, "Perception — did the tutor correctly read the student's cognitive state?",
+                        is_subheader=True, fg="1565C0")
+    rubric_p = [
+        ("0", "Ignores the student's state entirely"),
+        ("1", "Acknowledges it but misreads what type of state it is"),
+        ("2", "Correctly identifies the state"),
+        ("3", "Correctly identifies AND adapts the strategy accordingly"),
+    ]
+    for score, desc in rubric_p:
+        r = _readme_section(ws, r, f"  {score}  —  {desc}",
+                            bg=SCORE_COLORS[int(score)], indent=1)
+    r += 1
+
+    r = _readme_section(ws, r, "Orchestration — did the tutor choose the right response strategy?",
+                        is_subheader=True, fg="1565C0")
+    rubric_o = [
+        ("0", "Directly gives the answer or solution"),
+        ("1", "Hints, but gives too much away"),
+        ("2", "Scaffolds appropriately without revealing the answer"),
+        ("3", "Fully withholds the answer, guides only through questions"),
+    ]
+    for score, desc in rubric_o:
+        r = _readme_section(ws, r, f"  {score}  —  {desc}",
+                            bg=SCORE_COLORS[int(score)], indent=1)
+    r += 1
+
+    r = _readme_section(ws, r, "Elicitation — did the tutor draw the student out at the right level?",
+                        is_subheader=True, fg="1565C0")
+    rubric_e = [
+        ("0", "Closed yes/no or rhetorical question"),
+        ("1", "Leads the student toward one specific answer"),
+        ("2", "Open question that invites reasoning"),
+        ("3", "Probes deeper, extends thinking, raises the cognitive level"),
+    ]
+    for score, desc in rubric_e:
+        r = _readme_section(ws, r, f"  {score}  —  {desc}",
+                            bg=SCORE_COLORS[int(score)], indent=1)
+    r += 1
+
+    r = _readme_section(ws, r, "COLOUR LEGEND", is_subheader=True)
+    r = _readme_section(ws, r, "Yellow columns  → fill these in (your scores)", bg=C_YOUR_BG, indent=1)
+    r += 1
+
+    r = _readme_section(ws, r, "WHAT HAPPENS WITH YOUR SCORES", is_subheader=True)
+    for line in [
+        "I will compute Spearman rho between your scores and mine to validate the M3 metric for the paper.",
+        "No special knowledge of AI is required — the rubric above is self-contained.",
+        "If anything is unclear, just reply and I'll clarify.",
+    ]:
+        r = _readme_section(ws, r, line, indent=1)
+
+    wb.active = ws
 
 
-def style_auto(cell, value):
-    cell.value = value
-    cell.fill = AUTO_FILL
-    cell.font = BOLD_FONT
-    cell.alignment = CENTER
-    cell.border = BORDER
-
-
-def style_prof(cell, value=""):
-    cell.value = value
-    cell.fill = PROF_FILL
-    cell.font = BODY_FONT
-    cell.alignment = CENTER
-    cell.border = BORDER
-
-
-def style_body(cell, value):
-    cell.value = sanitize(value) if isinstance(value, str) else value
-    cell.font = BODY_FONT
-    cell.alignment = WRAP
-    cell.border = BORDER
-
-
-# ── M2 ────────────────────────────────────────────────────────────────────────
+# ── M2 data sheet ─────────────────────────────────────────────────────────────
 
 def build_m2():
-    rows = []
+    items = []
     with open(M2_INPUT) as f:
         for line in f:
-            rows.append(json.loads(line))
+            items.append(json.loads(line))
 
     wb = Workbook()
+    wb.remove(wb.active)          # remove default empty sheet
+    add_m2_readme(wb)             # tab 0: READ ME FIRST
 
-    # ── Instructions sheet ─────────────────────────────────────────────────
-    ins = wb.active
-    ins.title = "READ ME FIRST"
-    ins.sheet_view.showGridLines = False
-    ins.column_dimensions["A"].width = 90
+    ws = wb.create_sheet("M2 Faithfulness")   # tab 1: data
+    ws.freeze_panes = "A3"
 
-    instructions = [
-        ("SocraticRAG — M2 Faithfulness Spot-Check", True, "1F4E79", "FFFFFF"),
-        ("", False, None, None),
-        ("THANK YOU FOR YOUR HELP", True, None, None),
-        ("This file contains 36 Socratic tutor responses generated by AI models.", False, None, None),
-        ("For each response, an automated system extracted presuppositions and", False, None, None),
-        ("judged whether they are supported by the source text (Context C).", False, None, None),
-        ("Your job is to independently verify those judgments.", False, None, None),
-        ("", False, None, None),
-        ("WHAT IS A PRESUPPOSITION?", True, None, None),
-        ("A presupposition is a factual claim that a question assumes to be true.", False, None, None),
-        ('Example: "What happens when the learning rate is too high?"', False, None, None),
-        ('  → presupposes: "there is a threshold beyond which learning rate becomes problematic"', False, None, None),
-        ("", False, None, None),
-        ("YOUR TASK (go to the 'M2 Spot Check' sheet):", True, None, None),
-        ("For each row, read:", False, None, None),
-        ("  • Context C: the source text the tutor was given", False, None, None),
-        ("  • Tutor Response R: the Socratic question the tutor asked", False, None, None),
-        ("  • Presupposition: a claim extracted from R", False, None, None),
-        ("  • Our Verdict: what our system judged (ENTAILED or NOT_ENTAILED)", False, None, None),
-        ("", False, None, None),
-        ("Then fill in the YELLOW column 'Your Verdict':", False, None, None),
-        ("  ENTAILED     — the presupposition is directly and explicitly supported by Context C", False, None, None),
-        ("  NOT_ENTAILED — the presupposition introduces knowledge not in C, goes beyond C,", False, None, None),
-        ("                  or contradicts C. Be strict: loose implication counts as NOT_ENTAILED.", False, None, None),
-        ("", False, None, None),
-        ("You may also fill the 'Notes' column if you want to explain your judgment.", False, None, None),
-        ("", False, None, None),
-        ("IMPORTANT:", True, None, None),
-        ("  • Judge each presupposition ONLY against Context C — not general knowledge.", False, None, None),
-        ("  • If you find the presupposition plausible but C does not explicitly support it,", False, None, None),
-        ("    mark it NOT_ENTAILED.", False, None, None),
-        ("  • There is no time pressure — take as long as you need per row.", False, None, None),
-        ("", False, None, None),
-        ("Save the file and send it back when done. Thank you!", True, "1F4E79", "FFFFFF"),
+    # Yellow = professor; Blue = ours (placed after yellow so professor scores blind first)
+    cols = [
+        ("row_id",           6),
+        ("cognitive_state", 16),
+        ("context_C",       58),
+        ("tutor_response_R",50),
+        ("presup_#",         7),
+        ("presupposition",  50),
+        ("YOUR_VERDICT",    22),   # yellow — professor fills
+        ("notes",           28),
     ]
+    for i, (_, w) in enumerate(cols, 1):
+        ws.column_dimensions[get_column_letter(i)].width = w
 
-    for i, (text, bold, bg, fg) in enumerate(instructions, start=1):
-        cell = ins.cell(row=i, column=1, value=text)
-        cell.font = Font(bold=bold, name="Calibri", size=11,
-                         color=fg if fg else "000000")
-        cell.alignment = Alignment(wrap_text=True)
-        if bg:
-            cell.fill = PatternFill("solid", fgColor=bg)
-        ins.row_dimensions[i].height = 18
+    # Header row
+    YOUR_COL = 7
+    for ci, (h, _) in enumerate(cols, 1):
+        bg = C_YOUR_BG if ci == YOUR_COL else C_HEADER_BG
+        fg = "333333" if ci == YOUR_COL else C_HEADER_FG
+        set_cell(ws, 1, ci, h, bg=bg, bold=True, fg=fg, h="center", v="center")
+    ws.row_dimensions[1].height = 22
 
-    # ── Data sheet ─────────────────────────────────────────────────────────
-    ws = wb.create_sheet("M2 Spot Check")
-    ws.sheet_view.showGridLines = False
+    # Instruction banner
+    n = len(cols)
+    ws.merge_cells(f"A2:{get_column_letter(n)}2")
+    set_cell(ws, 2, 1,
+             "Fill the YELLOW column only. Enter SUPPORTED or NOT SUPPORTED. "
+             "Skip rows pre-filled with N/A.",
+             bg=C_INSTR_BG, fg=C_INSTR_FG, h="left", v="center", size=9)
+    ws.row_dimensions[2].height = 28
 
-    headers = [
-        "Row", "Model", "Cognitive State",
-        "Context C\n(tutor's only permitted source)",
-        "Tutor Response R\n(the Socratic question)",
-        "Presupposition\n(extracted claim)",
-        "Our Verdict\n(automated)",
-        "Your Verdict ★\n(ENTAILED / NOT_ENTAILED)",
-        "Notes\n(optional)"
-    ]
-    col_widths = [5, 16, 14, 50, 40, 45, 16, 20, 25]
-
-    for col, (h, w) in enumerate(zip(headers, col_widths), start=1):
-        style_header(ws.cell(row=1, column=col), h)
-        ws.column_dimensions[get_column_letter(col)].width = w
-
-    ws.row_dimensions[1].height = 36
-    ws.freeze_panes = "A2"
-
-    data_row = 2
-    for idx, item in enumerate(rows):
-        presups = item.get("m2_presuppositions", [])
+    row_num = 3
+    csv_row_id = 1
+    for item in items:
+        presups  = item.get("m2_presuppositions", [])
         verdicts = item.get("m2_verdicts", [])
-        model = item.get("model", "")
-        state = item.get("cognitive_state", "")
-        chunk = item.get("chunk_text", "")
-        response = item.get("response", "")
+        state    = item.get("cognitive_state", "")
+        chunk    = strip_latex(item.get("chunk_text", ""))
+        response = strip_latex(item.get("response", ""))
+        state_bg = C_STATE.get(state, "FFFFFF")
 
         if not presups:
-            # Vacuous row
-            fill = ALT_ROW_FILL if idx % 2 == 0 else None
-            ws.cell(data_row, 1).value = idx + 1
-            ws.cell(data_row, 2).value = model
-            ws.cell(data_row, 3).value = state
-            ws.cell(data_row, 4).value = chunk
-            ws.cell(data_row, 5).value = response
-            ws.cell(data_row, 6).value = "(no presuppositions extracted — vacuous)"
-            ws.cell(data_row, 7).value = "VACUOUS (score=1.0)"
-            ws.cell(data_row, 8).value = "N/A"
-            ws.cell(data_row, 9).value = ""
-            for col in range(1, 10):
-                c = ws.cell(data_row, col)
-                c.font = BODY_FONT
-                c.alignment = WRAP
-                c.border = BORDER
-                if fill:
-                    c.fill = fill
-            data_row += 1
+            row_bg = C_ODD_ROW if row_num % 2 else C_EVEN_ROW
+            set_cell(ws, row_num, 1, csv_row_id,                       bg=row_bg,   h="center")
+            set_cell(ws, row_num, 2, state,                             bg=state_bg)
+            set_cell(ws, row_num, 3, chunk,                             bg=row_bg)
+            set_cell(ws, row_num, 4, response,                          bg=row_bg)
+            set_cell(ws, row_num, 5, "—",                               bg=row_bg,   h="center")
+            set_cell(ws, row_num, 6, "(no presuppositions — vacuous)",  bg=row_bg)
+            set_cell(ws, row_num, 7, "N/A — skip", bg=C_VACUOUS, h="center")
+            set_cell(ws, row_num, 8, "",           bg=row_bg)
+            ws.row_dimensions[row_num].height = 60
+            row_num += 1
+            csv_row_id += 1
             continue
 
-        for p_idx, (presup, verdict) in enumerate(zip(presups, verdicts)):
-            fill = ALT_ROW_FILL if idx % 2 == 0 else None
-
-            style_body(ws.cell(data_row, 1), idx + 1)
-            style_body(ws.cell(data_row, 2), model)
-            style_body(ws.cell(data_row, 3), state)
-            style_context(ws.cell(data_row, 4), chunk)
-            style_context(ws.cell(data_row, 5), response)
-            style_context(ws.cell(data_row, 6), f"{p_idx+1}. {presup}")
-            style_auto(ws.cell(data_row, 7), verdict)
-            style_prof(ws.cell(data_row, 8))
-            style_prof(ws.cell(data_row, 9))
-
-            if fill:
-                for col in range(1, 10):
-                    c = ws.cell(data_row, col)
-                    if c.fill == PatternFill():
-                        c.fill = fill
-
-            ws.row_dimensions[data_row].height = 80 if p_idx == 0 else 40
-            data_row += 1
+        for p_idx, presup in enumerate(presups):
+            row_bg = C_ODD_ROW if row_num % 2 else C_EVEN_ROW
+            set_cell(ws, row_num, 1, csv_row_id, bg=row_bg,    h="center")
+            set_cell(ws, row_num, 2, state,       bg=state_bg)
+            set_cell(ws, row_num, 3, chunk,       bg=row_bg)
+            set_cell(ws, row_num, 4, response,    bg=row_bg)
+            set_cell(ws, row_num, 5, p_idx + 1,  bg=row_bg,    h="center")
+            set_cell(ws, row_num, 6, presup,      bg=row_bg)
+            set_cell(ws, row_num, 7, "",          bg=C_YOUR_BG, h="center")
+            set_cell(ws, row_num, 8, "",          bg=row_bg)
+            ws.row_dimensions[row_num].height = 70
+            row_num += 1
+            csv_row_id += 1
 
     wb.save(M2_OUTPUT)
-    print(f"Saved M2 spot-check Excel → {M2_OUTPUT}")
-    print(f"  {len(rows)} responses, {data_row - 2} rows (one per presupposition)")
+    print(f"Saved M2 Excel → {M2_OUTPUT}  ({csv_row_id - 1} rows)")
 
 
-# ── M3 ────────────────────────────────────────────────────────────────────────
+# ── M3 data sheet ─────────────────────────────────────────────────────────────
 
 def build_m3():
-    rows = []
+    items = []
     with open(M3_INPUT) as f:
         for line in f:
-            rows.append(json.loads(line))
+            items.append(json.loads(line))
 
     wb = Workbook()
+    wb.remove(wb.active)
+    add_m3_readme(wb)
 
-    # ── Instructions sheet ─────────────────────────────────────────────────
-    ins = wb.active
-    ins.title = "READ ME FIRST"
-    ins.sheet_view.showGridLines = False
-    ins.column_dimensions["A"].width = 90
+    ws = wb.create_sheet("M3 Pedagogical")
+    ws.freeze_panes = "A3"
 
-    instructions = [
-        ("SocraticRAG — M3 Pedagogical Alignment Spot-Check", True, "1F4E79", "FFFFFF"),
-        ("", False, None, None),
-        ("THANK YOU FOR YOUR HELP", True, None, None),
-        ("This file contains 24 Socratic tutor responses generated by AI models.", False, None, None),
-        ("For each response, you will score the tutor on three pedagogical dimensions.", False, None, None),
-        ("Your scores will be compared against our automated scores to validate the metric.", False, None, None),
-        ("", False, None, None),
-        ("THE SCENARIO:", True, None, None),
-        ("An AI tutoring system receives a student message (U) along with a source text (C).", False, None, None),
-        ("The tutor's job is to respond with a Socratic question — guiding the student", False, None, None),
-        ("toward understanding without directly stating the answer.", False, None, None),
-        ("You will see the student's actual cognitive state (accurate / erroneous / comprehension / confusion)", False, None, None),
-        ("which was NOT shown to the tutor — only you and the automated judge know it.", False, None, None),
-        ("", False, None, None),
-        ("YOUR TASK (go to the 'M3 Spot Check' sheet):", True, None, None),
-        ("Score each tutor response on three dimensions. Enter integers 0–3 in the YELLOW columns.", False, None, None),
-        ("", False, None, None),
-        ("DIMENSION 1 — PERCEPTION (did the tutor correctly read the student's state?):", True, None, None),
-        ("  3 = Response clearly targets this specific state and the exact gap/misconception", False, None, None),
-        ("  2 = Broadly matches the state but misses the specific misconception", False, None, None),
-        ("  1 = Partially addresses the state; could apply to multiple states", False, None, None),
-        ("  0 = Generic — fits any student, or misdiagnoses the state entirely", False, None, None),
-        ("", False, None, None),
-        ("DIMENSION 2 — ORCHESTRATION (did the tutor choose the right strategy?):", True, None, None),
-        ("  Strategy depends on state:", False, None, None),
-        ("    accurate      → deepen or challenge (edge cases, higher-order implications)", False, None, None),
-        ("    erroneous     → surface the misconception without stating the correction", False, None, None),
-        ("    comprehension → probe depth (apply or derive, not just recall)", False, None, None),
-        ("    confusion     → scaffold back to a simpler, grounded premise", False, None, None),
-        ("  3 = Ideal strategy for this state", False, None, None),
-        ("  2 = Right direction but too aggressive or too conservative", False, None, None),
-        ("  1 = Marginally appropriate but a different strategy would serve better", False, None, None),
-        ("  0 = Mismatched strategy (would make things worse)", False, None, None),
-        ("", False, None, None),
-        ("DIMENSION 3 — ELICITATION (right Bloom's taxonomy level?):", True, None, None),
-        ("  Expected levels by state:", False, None, None),
-        ("    accurate      → L4–L6 (Analyze/Evaluate/Create)", False, None, None),
-        ("    erroneous     → L1–L2 (Remember/Understand — re-anchor to the source text)", False, None, None),
-        ("    comprehension → L3–L4 (Apply/Analyze)", False, None, None),
-        ("    confusion     → L1–L2 (Remember/Understand — scaffold from basics)", False, None, None),
-        ("  3 = Exactly right Bloom's level", False, None, None),
-        ("  2 = One level off (still reasonable)", False, None, None),
-        ("  1 = Two+ levels off but question is still coherent", False, None, None),
-        ("  0 = Completely mismatched (e.g., creative task for confused student)", False, None, None),
-        ("", False, None, None),
-        ("Please do NOT look at the 'Our Scores' columns before filling in your scores.", True, "FF0000", "FFFFFF"),
-        ("Score independently first, then you may compare.", False, None, None),
-        ("", False, None, None),
-        ("Save the file and send it back when done. Thank you!", True, "1F4E79", "FFFFFF"),
+    cols = [
+        ("row_id",           6),
+        ("cognitive_state", 16),
+        ("target_concept",  24),
+        ("context_C",       52),
+        ("student_utt",     42),
+        ("tutor_response",  42),
+        ("YOUR_P",          10),   # yellow
+        ("YOUR_O",          10),   # yellow
+        ("YOUR_E",          10),   # yellow
+        ("YOUR_TOTAL",      11),   # yellow
+        ("notes",           28),
     ]
+    for i, (_, w) in enumerate(cols, 1):
+        ws.column_dimensions[get_column_letter(i)].width = w
 
-    for i, (text, bold, bg, fg) in enumerate(instructions, start=1):
-        cell = ins.cell(row=i, column=1, value=text)
-        cell.font = Font(bold=bold, name="Calibri", size=11,
-                         color=fg if fg else "000000")
-        cell.alignment = Alignment(wrap_text=True)
-        if bg:
-            cell.fill = PatternFill("solid", fgColor=bg)
-        ins.row_dimensions[i].height = 18
+    YOUR_COLS = {7, 8, 9, 10}
 
-    # ── Data sheet ─────────────────────────────────────────────────────────
-    ws = wb.create_sheet("M3 Spot Check")
-    ws.sheet_view.showGridLines = False
+    for ci, (h, _) in enumerate(cols, 1):
+        bg = C_YOUR_BG if ci in YOUR_COLS else C_HEADER_BG
+        fg = "333333"  if ci in YOUR_COLS else C_HEADER_FG
+        set_cell(ws, 1, ci, h, bg=bg, bold=True, fg=fg, h="center", v="center")
+    ws.row_dimensions[1].height = 22
 
-    headers = [
-        "Row", "Model", "Cognitive\nState", "Target Concept",
-        "Context C\n(tutor's source)",
-        "Student Utterance U",
-        "Tutor Response R",
-        "Our\nPerception", "Our\nOrchestration", "Our\nElicitation", "Our\nTotal",
-        "Your\nPerception ★", "Your\nOrchestration ★", "Your\nElicitation ★", "Your\nTotal",
-        "Notes\n(optional)"
-    ]
-    col_widths = [5, 16, 12, 22, 50, 35, 45, 10, 13, 11, 8, 12, 15, 13, 10, 25]
+    n = len(cols)
+    ws.merge_cells(f"A2:{get_column_letter(n)}2")
+    set_cell(ws, 2, 1,
+             "Fill the YELLOW columns only: YOUR_P, YOUR_O, YOUR_E (each 0–3), "
+             "then write the sum in YOUR_TOTAL.",
+             bg=C_INSTR_BG, fg=C_INSTR_FG, h="left", v="center", size=9)
+    ws.row_dimensions[2].height = 28
 
-    for col, (h, w) in enumerate(zip(headers, col_widths), start=1):
-        style_header(ws.cell(row=1, column=col), h)
-        ws.column_dimensions[get_column_letter(col)].width = w
+    row_num = 3
+    for idx, item in enumerate(items):
+        profile  = item.get("profile", {})
+        state    = item.get("cognitive_state", "")
+        concept  = profile.get("target_concept", "")
+        chunk    = strip_latex(item.get("chunk_text", ""))
+        utt      = strip_latex(item.get("utterance", ""))
+        resp     = strip_latex(item.get("response", ""))
+        p        = item.get("m3_perception", "")
+        o        = item.get("m3_orchestration", "")
+        el       = item.get("m3_elicitation", "")
+        total    = item.get("m3_total", "")
+        state_bg = C_STATE.get(state, "FFFFFF")
+        row_bg   = C_ODD_ROW if row_num % 2 else C_EVEN_ROW
 
-    ws.row_dimensions[1].height = 40
-    ws.freeze_panes = "A2"
-
-    for idx, item in enumerate(rows):
-        r = idx + 2
-        fill = ALT_ROW_FILL if idx % 2 == 0 else None
-        profile = item.get("profile", {})
-
-        style_body(ws.cell(r, 1), idx + 1)
-        style_body(ws.cell(r, 2), item.get("model", ""))
-        style_body(ws.cell(r, 3), item.get("cognitive_state", ""))
-        style_body(ws.cell(r, 4), profile.get("target_concept", ""))
-        style_context(ws.cell(r, 5), item.get("chunk_text", ""))
-        style_context(ws.cell(r, 6), item.get("utterance", ""))
-        style_context(ws.cell(r, 7), item.get("response", ""))
-        style_auto(ws.cell(r, 8), item.get("m3_perception", ""))
-        style_auto(ws.cell(r, 9), item.get("m3_orchestration", ""))
-        style_auto(ws.cell(r, 10), item.get("m3_elicitation", ""))
-        style_auto(ws.cell(r, 11), item.get("m3_total", ""))
-        style_prof(ws.cell(r, 12))
-        style_prof(ws.cell(r, 13))
-        style_prof(ws.cell(r, 14))
-
-        # Auto-sum formula for professor total
-        total_cell = ws.cell(r, 15)
-        total_cell.value = f"=L{r}+M{r}+N{r}"
-        total_cell.fill = PatternFill("solid", fgColor="FFF2CC")
-        total_cell.font = BOLD_FONT
-        total_cell.alignment = CENTER
-        total_cell.border = BORDER
-
-        style_prof(ws.cell(r, 16))
-
-        if fill:
-            for col in range(1, 17):
-                c = ws.cell(r, col)
-                if c.fill.fgColor.rgb in ("00000000", "FFFFFFFF"):
-                    c.fill = fill
-
-        ws.row_dimensions[r].height = 100
+        set_cell(ws, row_num,  1, idx + 1, bg=row_bg,          h="center")
+        set_cell(ws, row_num,  2, state,    bg=state_bg)
+        set_cell(ws, row_num,  3, concept,  bg=row_bg)
+        set_cell(ws, row_num,  4, chunk,    bg=row_bg)
+        set_cell(ws, row_num,  5, utt,      bg=row_bg)
+        set_cell(ws, row_num,  6, resp,     bg=row_bg)
+        set_cell(ws, row_num,  7, "", bg=C_YOUR_BG, h="center")
+        set_cell(ws, row_num,  8, "", bg=C_YOUR_BG, h="center")
+        set_cell(ws, row_num,  9, "", bg=C_YOUR_BG, h="center")
+        set_cell(ws, row_num, 10, "", bg=C_YOUR_BG, h="center")
+        set_cell(ws, row_num, 11, "", bg=row_bg)
+        ws.row_dimensions[row_num].height = 90
+        row_num += 1
 
     wb.save(M3_OUTPUT)
-    print(f"Saved M3 spot-check Excel → {M3_OUTPUT}")
-    print(f"  {len(rows)} responses")
+    print(f"Saved M3 Excel → {M3_OUTPUT}  ({len(items)} rows)")
 
 
 if __name__ == "__main__":
     build_m2()
     build_m3()
-    print("\nDone. Send both files to your professor with the email template.")
+    print("\nDone.")

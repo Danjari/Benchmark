@@ -125,13 +125,11 @@ def build_m2():
 
     headers = [
         "row_id",
-        "model",
         "cognitive_state",
         "context_C",
         "tutor_response_R",
         "presupposition_number",
         "presupposition_text",
-        "our_verdict",
         "YOUR_VERDICT",   # professor fills: SUPPORTED or NOT SUPPORTED
         "notes",          # optional
     ]
@@ -140,8 +138,6 @@ def build_m2():
     row_id = 1
     for item in rows:
         presups  = item.get("m2_presuppositions", [])
-        verdicts = item.get("m2_verdicts", [])
-        model    = item.get("model", "")
         state    = item.get("cognitive_state", "")
         chunk    = strip_latex(item.get("chunk_text", ""))
         response = strip_latex(item.get("response", ""))
@@ -149,29 +145,25 @@ def build_m2():
         if not presups:
             out_rows.append({
                 "row_id": row_id,
-                "model": model,
                 "cognitive_state": state,
                 "context_C": chunk,
                 "tutor_response_R": response,
                 "presupposition_number": "—",
                 "presupposition_text": "(no presuppositions extracted — vacuous response)",
-                "our_verdict": "VACUOUS",
                 "YOUR_VERDICT": "N/A — skip this row",
                 "notes": "",
             })
             row_id += 1
             continue
 
-        for p_idx, (presup, verdict) in enumerate(zip(presups, verdicts)):
+        for p_idx, presup in enumerate(presups):
             out_rows.append({
                 "row_id": row_id,
-                "model": model,
                 "cognitive_state": state,
                 "context_C": chunk,
                 "tutor_response_R": response,
                 "presupposition_number": p_idx + 1,
                 "presupposition_text": presup,
-                "our_verdict": human_verdict(verdict),
                 "YOUR_VERDICT": "",
                 "notes": "",
             })
@@ -193,16 +185,11 @@ def build_m3():
 
     headers = [
         "row_id",
-        "model",
         "cognitive_state",
         "target_concept",
         "context_C",
         "student_utterance_U",
         "tutor_response_R",
-        "our_perception",       # 0-3
-        "our_orchestration",    # 0-3
-        "our_elicitation",      # 0-3
-        "our_total",            # 0-9
         "YOUR_PERCEPTION",      # professor fills: 0, 1, 2, or 3
         "YOUR_ORCHESTRATION",   # professor fills: 0, 1, 2, or 3
         "YOUR_ELICITATION",     # professor fills: 0, 1, 2, or 3
@@ -215,16 +202,11 @@ def build_m3():
         profile = item.get("profile", {})
         out_rows.append({
             "row_id": idx + 1,
-            "model": item.get("model", ""),
             "cognitive_state": item.get("cognitive_state", ""),
             "target_concept": profile.get("target_concept", ""),
             "context_C": strip_latex(item.get("chunk_text", "")),
             "student_utterance_U": strip_latex(item.get("utterance", "")),
             "tutor_response_R": strip_latex(item.get("response", "")),
-            "our_perception": item.get("m3_perception", ""),
-            "our_orchestration": item.get("m3_orchestration", ""),
-            "our_elicitation": item.get("m3_elicitation", ""),
-            "our_total": item.get("m3_total", ""),
             "YOUR_PERCEPTION": "",
             "YOUR_ORCHESTRATION": "",
             "YOUR_ELICITATION": "",
