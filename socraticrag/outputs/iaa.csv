@@ -1,0 +1,6 @@
+metric,measure,value,n,note
+M2,Cohen's kappa,0.2069,69,"Systematic direction: AI flags NOT SUPPORTED, human accepts as SUPPORTED (20/20 disagreements). AI applies strict literal entailment; human applies inferential reading."
+M3_p,Spearman rho,0.8068,24,"MAE=0.292, mean human-ours=+0.29"
+M3_o,Spearman rho,0.2125,24,"MAE=0.667, mean human-ours=+0.50"
+M3_e,Spearman rho,0.3555,24,"MAE=0.583, mean human-ours=+0.08"
+M3_total,Spearman rho,0.5657,24,"MAE=1.542, mean human-ours=+0.88"

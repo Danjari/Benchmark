@@ -1,0 +1,50 @@
+SocraticRAG — Results Summary
+==================================================
+
+Total responses: 1974
+Models: claude-sonnet-4-6, gemini-2.0-flash, gpt-4o
+
+Main Results (mean ± SD):
+  claude-sonnet-4-6:
+    M1 (Socratic adherence):    0.643 ± 0.226
+    M2 (retrieval faithfulness): 1.000 ± 0.000
+    M3 (pedagogical alignment):  8.164 ± 1.370 / 9
+    RAGAS baseline:              1.000 ± 0.000
+
+  gemini-2.0-flash:
+    M1 (Socratic adherence):    0.643 ± 0.226
+    M2 (retrieval faithfulness): 1.000 ± 0.000
+    M3 (pedagogical alignment):  7.799 ± 1.838 / 9
+    RAGAS baseline:              0.986 ± 0.116
+
+  gpt-4o:
+    M1 (Socratic adherence):    0.845 ± 0.231
+    M2 (retrieval faithfulness): 0.643 ± 0.256
+    M3 (pedagogical alignment):  5.821 ± 1.921 / 9
+    RAGAS baseline:              1.000 ± 0.000
+
+Spearman Correlations (orthogonality):
+  ρ(M1, M2) = -0.3298
+  ρ(M1, M3) = -0.2266
+  ρ(M2, M3) = +0.5166
+
+Output files:
+  outputs/results.csv
+  outputs/results_by_state.csv
+  outputs/correlation_matrix.csv
+  outputs/summary.txt
+
+Human validation required before final reporting:
+  M1: professor review of BORDERLINE responses
+  M2: professor spot-check (data/m2_spot_check.jsonl) — Cohen's kappa
+  M3: professor spot-check (data/m3_spot_check.jsonl) — Spearman rho > 0.7
+  Dean: professor reads 20 (C, U) pairs to validate Dean decisions
+
+Inter-Annotator Agreement (Human vs. Automated):
+  M2 Cohen's kappa : +0.2069  (n=69, raw agreement=71.0%)
+  M2 note          : Systematic direction: AI flags NOT SUPPORTED, human accepts as SUPPORTED (20/20 disagreements). AI applies strict literal entailment; human applies inferential reading.
+  M3 Perception      : rho=+0.8068  MAE=0.292  mean(human-ours)=+0.29
+  M3 Orchestration   : rho=+0.2125  MAE=0.667  mean(human-ours)=+0.50
+  M3 Elicitation     : rho=+0.3555  MAE=0.583  mean(human-ours)=+0.08
+  M3 Total           : rho=+0.5657  MAE=1.542  mean(human-ours)=+0.88
+
